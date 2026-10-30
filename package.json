@@ -1,0 +1,16 @@
+{
+  "name": "aspire-animation",
+  "private": true,
+  "description": "Instagram Reels for Aspire College, drawn in code and rendered to MP4",
+  "scripts": {
+    "new": "node tools/new-reel.js",
+    "build": "node tools/build.js",
+    "render": "node tools/render.js",
+    "skills": "node tools/skills.js",
+    "sync": "python3 tools/sync-engines.py",
+    "check": "node tools/skills.js --check && python3 tools/sync-engines.py --check"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

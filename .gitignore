@@ -1,0 +1,17 @@
+# reels are working folders, never committed: each one is delivered as files (out.mp4 + index.html),
+# and its index.html carries its own source (node tools/unpack-reel.js brings it back)
+reels/*
+!reels/README.md
+# check frames and code-check scratch (regenerate with tools/build.js --check)
+.check/
+reel_check/
+# generated from images/ at build time
+reels/*/images.js
+# render temporaries
+*.render.wav
+loop3.mp4
+# node / python / os
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store

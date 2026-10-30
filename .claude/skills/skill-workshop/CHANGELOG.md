@@ -1,0 +1,5 @@
+# skill-workshop changelog
+
+## 1.0.0 — 2026-10-30
+
+- Created.

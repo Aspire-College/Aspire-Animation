@@ -1,0 +1,993 @@
+<!-- reel25d:template -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2.5D Reel (p5.js)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- p5.js, pinned to 1.x (2.x changed several drawing APIs) -->
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.min.js"></script>
+<script>window.p5 || document.write('<script src="https://unpkg.com/p5@1.11.10/lib/p5.min.js"><\/script>');</script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
+<style>
+:root { color-scheme: dark; } * { box-sizing: border-box; }
+body { margin: 0; background: #0b0d12; color: #d7dbe4; font: 14px/1.4 system-ui, sans-serif; }
+main { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; padding: 20px 16px; }
+#stage { position: relative; background: #000; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px #ffffff1a, 0 20px 60px #000a; line-height: 0; }
+#stage canvas { display: block; } #stage.fs { position: fixed; inset: 0; z-index: 50; border-radius: 0; display: flex; align-items: center; justify-content: center; }
+#view { position: relative; display: inline-block; }
+#fsx { display: none; position: absolute; top: 14px; right: 14px; z-index: 60; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 20px; } #stage.fs #fsx { display: block; }
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 5; } #guides i { position: absolute; left: 0; right: 0; border-top: 2px dashed #ff4646cc; } #guides b { position: absolute; left: 0; right: 0; background: #ff464618; border-block: 1px dashed #ff464699; }
+#badge { display: none; position: absolute; top: 8px; left: 8px; z-index: 6; padding: 4px 9px; border-radius: 7px; background: #000b; color: #fff; font: 600 13px/1.3 system-ui, sans-serif; }
+aside { width: min(100%, 380px); display: flex; flex-direction: column; gap: 12px; } h1 { margin: 0; font-size: 20px; color: #fff; } p { margin: 0; color: #8f97a8; font-size: 12px; }
+.card { background: #151922; border-radius: 12px; padding: 12px; box-shadow: 0 0 0 1px #ffffff14; } .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button, input[type=number] { font: inherit; border: 0; border-radius: 9px; padding: 8px 12px; background: #ffffff1c; color: #fff; } button { font-weight: 600; cursor: pointer; } button:hover { background: #ffffff30; } :disabled { opacity: .5; }
+input[type=number] { width: 76px; } input[type=range] { width: 100%; accent-color: #e9b44c; } label { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #9aa2b3; }
+#rec { background: #d93a3a; width: 100%; padding: 12px; } #time { margin-left: auto; font-variant-numeric: tabular-nums; color: #9aa2b3; } .ok { color: #7fe3a0 !important; } .err { color: #ff8c8c !important; }
+</style>
+</head>
+<body>
+<main>
+<div id="stage"><div id="view"><button id="fsx" title="Exit full screen">✕</button><div id="guides"><b style="top:15.6%;height:18.2%"></b><i style="top:65.1%"></i></div><div id="badge"></div></div></div>
+<aside>
+<div><h1 id="title">2.5D Reel</h1><p>1080×1920 · Three.js · p5.js-painted layers in 3D</p></div>
+<div class="card"><div class="row"><button id="play">▶ Play</button><button id="restart">⟲</button><button id="fs">⛶ Full screen</button><span id="time">0.0 / 0.0</span></div>
+<input id="scrub" type="range" min="0" max="10" step="0.001" value="0" style="margin-top:10px" /><p>Space play/pause · ←/→ one frame (Shift: one second) · F full screen · S copy screenshot</p></div>
+<div class="card"><div class="row"><button id="prevChk">◀</button><button id="nextChk" style="flex:1">📸 Next check frame</button><button id="shot" title="Copy this frame to the clipboard (S)">📋 Copy screenshot</button></div>
+<label style="margin-top:8px"><input id="guidesOn" type="checkbox" checked /> Guides: caption band, and the line below which Reels covers the picture</label>
+<p id="chkInfo" style="margin-top:6px;color:#d7dbe4">📸 pauses on the next frame to check; 📋 copies the frame you see (1080×1920; with Guides on, the guides and the frame label are drawn in): paste it into the chat.</p></div>
+<div class="card"><div class="row"><label>End screen hold (s) <input id="hold" type="number" min="0" max="60" step="0.5" /></label><label><input id="hear" type="checkbox" checked /> Hear sound</label></div>
+<label style="margin-top:8px">Volume <input id="vol" type="range" min="0" max="1" step="0.01" /></label></div>
+<div class="card"><button id="rec">● Record &amp; Download</button><p id="status" style="margin-top:8px"></p></div>
+</aside>
+</main>
+<!--@@IMAGES@@-->
+<script type="module">
+import * as THREE from 'three';
+// ════ ENGINE: copied out of the skill by build.py. Never retype or edit it: the reel lives in reel.js. ════
+const W = 1080, H = 1920, TAU = Math.PI * 2, $ = id => document.getElementById(id);
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x, mix = (a, b, k) => a + (b - a) * k, mixv = (a, b, k) => a.map((v, i) => mix(v, b[i], k)), add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sm = (a, b, x) => { const k = clamp01((x - a) / (b - a)); return k * k * (3 - 2 * k); };   // 0→1 between times a and b
+const Ease = { lin: k => k, sm: k => k * k * (3 - 2 * k), io: k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2, in: k => k * k * k, out: k => 1 - Math.pow(1 - k, 3), outBack: k => 1 + 2.70158 * Math.pow(k - 1, 3) + 1.70158 * Math.pow(k - 1, 2) };
+const tw = (t, start, dur, e = Ease.out) => e(clamp01((t - start) / dur)), bump = (t, at, dur) => { const k = (t - at) / dur; return k <= 0 || k >= 1 ? 0 : Math.sin(k * Math.PI); };
+const settle = (t, at, h = 0.12, d = 0.5) => { const k = (t - at) / d; return k <= 0 || k >= 1 ? 0 : h * Math.abs(Math.sin(k * Math.PI * 2.5)) * (1 - k) * (1 - k); };   // a small decaying hop after a landing
+function rng(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const hexMix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString(), lighten = (c, k) => hexMix(c, '#ffffff', k), darken = (c, k) => hexMix(c, '#000000', k);
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });   // log depth: a speck of dust and a mountain range in one world
+renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.autoClear = false;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.NoToneMapping;   // the pictures keep their painted colours
+$('view').prepend(renderer.domElement);
+const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 400), world = new THREE.Group();
+scene.fog = new THREE.Fog('#bcd8f0', 40, 140); scene.add(world);
+const sun = new THREE.DirectionalLight('#ffffff', 1);   // only for cast shadows: the pictures carry their own painted light
+sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.radius = 5; sun.shadow.camera.near = 1;
+scene.add(sun, sun.target);
+const LOOK = { grain: 0, vignette: 0.4 };   // the finish over the whole picture: animated grain (0..0.25), vignette (0..1)
+let MESHES = 0, CURKEY = null;
+function grp(g, x = 0, y = 0, z = 0, ry = 0) { const n = new THREE.Group(); n.position.set(x, y, z); n.rotation.y = ry; g.add(n); return n; }
+
+// ════ ONE WORLD OF PLACES: WORLD.key = [x, y, z] or { in: parent, at: [x, y, z], s: scale, rot: [rx, ry, rz], fog: [near, far] | false, sh, r, vis } ════
+// A place is built at its own comfortable size (metres); a place inside another is a scaled model of it (a painting on a wall, a world in a drop).
+const rotM = ([x = 0, y = 0, z = 0] = []) => { const a = Math.cos(x), b = Math.sin(x), c = Math.cos(y), d = Math.sin(y), e = Math.cos(z), f = Math.sin(z); return [c * e, -c * f, d, a * f + b * e * d, a * e - b * f * d, -b * c, b * f - a * e * d, b * e + a * f * d, a * c]; };   // Three's XYZ order
+const mulM = (A, B) => [0, 1, 2].flatMap(i => [0, 1, 2].map(j => A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j]));
+const apM = (M, v) => [M[0] * v[0] + M[1] * v[1] + M[2] * v[2], M[3] * v[0] + M[4] * v[1] + M[5] * v[2], M[6] * v[0] + M[7] * v[1] + M[8] * v[2]], tM = M => [M[0], M[3], M[6], M[1], M[4], M[7], M[2], M[5], M[8]];
+const LV = {}, GROUPS = {}, ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+function lv(key) {   // a place's world origin o, world scale s, world rotation M and up vector u
+  if (LV[key]) return LV[key];
+  const w = WORLD[key]; if (!w) throw new Error('No WORLD entry: ' + key);
+  const e = Array.isArray(w) ? { at: w } : w, par = e.in ? lv(e.in) : { o: [0, 0, 0], s: 1, M: ID }, M = mulM(par.M, rotM(e.rot)), s = par.s * (e.s ?? 1);
+  return (LV[key] = { key, e, o: add3(par.o, apM(par.M, (e.at || [0, 0, 0]).map(v => v * par.s))), s, M, u: apM(M, [0, 1, 0]), par: e.in || null, fog: e.fog === undefined ? [40, 140] : e.fog, sh: e.sh || 7, r: e.r || 12, vis: e.vis ?? 0.008 });
+}
+function level(key) {   // the group of place `key` (made once; parents first): build its layers in it
+  if (!GROUPS[key]) { const L = lv(key), g = grp(L.par ? level(L.par) : world, ...(L.e.at || [0, 0, 0])); if (L.e.rot) g.rotation.set(...L.e.rot); g.scale.setScalar(L.e.s ?? 1); g.userData.key = key; GROUPS[key] = g; }
+  CURKEY = key; return GROUPS[key];
+}
+const AT = (key, p = [0, 0, 0]) => { const L = lv(key); return add3(L.o, apM(L.M, p.map(v => v * L.s))); };   // a point of place `key`, in world coordinates
+
+// ════ PICTURES: everything you see is painted with p5.js (or, "with images", the user's images). A picture is never stretched. ════
+const IMG = {}, MISSING = new Set(), LIVE = [], TBASE = {}, BILL = [], CARDS = [], GRADED = [], SHADES = [], GROUNDS = [], TEX = { px: 0, live: 0, n: 0 };
+// p5.js only makes graphics buffers here (one p5.Graphics per picture): no canvas on the page, no draw loop. P5 is the one hidden instance.
+const P5 = new p5(p => { p.setup = () => { p.noCanvas(); p.noLoop(); }; }); P5._pixelDensity = 1;
+function gfx(w, h) { const g = P5.createGraphics(w, h); if (g.elt.width !== w) g.pixelDensity(1); if (g.elt.parentNode) g.elt.parentNode.removeChild(g.elt); return g; }
+const SCRATCH = {}, scratch = (w, h, i = 0) => { const k = `${w}x${h}x${i}`; if (!SCRATCH[k]) { if (i === 0) { const g = gfx(w, h); SCRATCH[k] = { cv: g.elt, ctx: g.drawingContext, g }; } else { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; SCRATCH[k] = { cv, ctx: cv.getContext('2d') }; } } return SCRATCH[k]; };
+function makeDrawing(w, h, fn, o, five) {   // five: fn(p, w, h, t) paints a w×h p5.Graphics p (p.drawingContext is the raw Canvas 2D context); else fn(c, w, h, t) paints a raw Canvas 2D context. o: true (live: repainted every frame with the time t) or { live, blur (softer by this factor: depth of field), rim: [px, colour] (a cut-paper edge), feather: px or [top, right, bottom, left] (edges fade out; use the card with soft: true) }
+  if (o === true) o = { live: true };
+  const k = Math.max(1, o.blur || 1), cw = Math.max(1, Math.round(w / k)), ch = Math.max(1, Math.round(h / k));
+  const G = five ? gfx(cw, ch) : null, cv = G ? G.elt : document.createElement('canvas'); if (!G) { cv.width = cw; cv.height = ch; } const ctx = G ? G.drawingContext : cv.getContext('2d'), seed = o.seed ?? 1;
+  const d = { cv, ctx, G, p: G, w, h, fn, live: !!o.live, tex: new THREE.CanvasTexture(cv) };   // d.p: the p5.Graphics, to paint on it outside fn
+  const run = (g, x, t) => { if (!five) return fn(x, w, h, t); g.push(); g.resetMatrix(); g.randomSeed(seed); g.noiseSeed(seed); fn(g, w, h, t); g.pop(); };   // every repaint starts from the same state and seeds: a picture is a pure function of t
+  d.tex.colorSpace = THREE.SRGBColorSpace; d.tex.anisotropy = 8;
+  const fe = o.feather && [].concat(o.feather), F = fe && (fe.length === 1 ? [fe[0], fe[0], fe[0], fe[0]] : fe), feather = (c, ww, hh, s) => { c.globalCompositeOperation = 'destination-in'; [[0, 0, 0, F[0] * s, 0, 0, ww, F[0] * s], [ww, 0, ww - F[1] * s, 0, ww - F[1] * s, 0, F[1] * s, hh], [0, hh, 0, hh - F[2] * s, 0, hh - F[2] * s, ww, F[2] * s], [0, 0, F[3] * s, 0, 0, 0, F[3] * s, hh]].forEach(([x0, y0, x1, y1, rx, ry, rw, rh]) => { if (rw <= 0 || rh <= 0) return; const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)'); c.fillStyle = g; c.fillRect(rx, ry, rw, rh); }); c.globalCompositeOperation = 'source-over'; };
+  d.paint = t => {
+    if (k === 1 && !o.rim) { ctx.clearRect(0, 0, cw, ch); run(G, ctx, t); if (F) feather(ctx, w, h, 1); }
+    else {
+      const s = scratch(w, h); s.ctx.clearRect(0, 0, w, h); run(s.g, s.ctx, t);
+      if (o.rim) { const [px, col] = o.rim, q = scratch(w, h, 1); q.ctx.clearRect(0, 0, w, h); for (let i = 0; i < 16; i++) q.ctx.drawImage(s.cv, Math.cos(i * TAU / 16) * px, Math.sin(i * TAU / 16) * px); q.ctx.globalCompositeOperation = 'source-in'; q.ctx.fillStyle = col; q.ctx.fillRect(0, 0, w, h); q.ctx.globalCompositeOperation = 'source-over'; q.ctx.drawImage(s.cv, 0, 0); s.ctx.clearRect(0, 0, w, h); s.ctx.drawImage(q.cv, 0, 0); }
+      let src = s.cv, sw = w, sh = h, j = 2; while (sw / 2 >= cw * 1.01 && sh / 2 >= ch * 1.01) { sw = Math.round(sw / 2); sh = Math.round(sh / 2); const q = scratch(sw, sh, j++); q.ctx.clearRect(0, 0, sw, sh); q.ctx.drawImage(src, 0, 0, sw, sh); src = q.cv; }   // halve step by step: a smooth blur
+      ctx.clearRect(0, 0, cw, ch); ctx.drawImage(src, 0, 0, cw, ch); if (F) feather(ctx, cw, ch, 1 / k);
+    }
+    d.tex.needsUpdate = true;
+  };
+  d.paint(0); TEX.px += cw * ch; TEX.n++; if (d.live) { LIVE.push(d); TEX.live += cw * ch; }
+  return d;
+}
+const drawing = (w, h, fn, o = {}) => makeDrawing(w, h, fn, o, true);     // a p5.js picture: fn(p, w, h, t)
+const drawing2d = (w, h, fn, o = {}) => makeDrawing(w, h, fn, o, false);   // a raw Canvas 2D picture: only the engine's own (glow, beam, grain, veil, captions)
+function pic(key) {   // { t: texture, r: width ÷ height } of a drawing, a PICS key, an image key or a colour ('#hex': a plain colour card)
+  if (key && key.tex) return { t: key.live ? key.tex : Object.assign(key.tex.clone(), { needsUpdate: true }), r: key.w / key.h };
+  if (IMG[key]) { const b = TBASE[key] || (TBASE[key] = Object.assign(new THREE.Texture(IMG[key]), { colorSpace: THREE.SRGBColorSpace, anisotropy: 8 })); return { t: Object.assign(b.clone(), { needsUpdate: true }), r: IMG[key].naturalWidth / IMG[key].naturalHeight }; }
+  if (typeof PICS !== 'undefined' && PICS[key]) return pic(PICS[key]);
+  if (typeof key === 'string' && key[0] === '#') return { t: null, r: 1, col: key };
+  MISSING.add(String(key)); return pic(drawing2d(256, 256, c => { c.fillStyle = '#8d8d8d'; c.fillRect(0, 0, 256, 256); c.fillStyle = '#222'; c.font = '600 22px system-ui'; c.fillText(String(key), 14, 134); }));
+}
+const ratio = key => 1 / pic(key).r;   // height ÷ width
+const span = (dist, lens = 40) => { const h = 2 * dist * Math.tan(lens * Math.PI / 360); return [h * W / H, h]; };   // [width, height] the camera sees at that distance: paint a layer at least this big, plus room for the move
+
+// ════ CARDS: a painted picture on a flat card standing in 3D space (its height follows the picture) ════
+function cmat(p, o = {}) {
+  const m = new THREE.MeshBasicMaterial({ map: p.t || null, color: p.col || '#ffffff', side: o.double === false ? THREE.FrontSide : THREE.DoubleSide, fog: o.fog !== false, toneMapped: false });
+  if (o.add) Object.assign(m, { blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: o.alpha ?? 1 });
+  else if (o.alpha != null || o.soft) Object.assign(m, { transparent: true, depthWrite: false, opacity: o.alpha ?? 1 });   // see-through or feathered: blended, sorted far to near
+  else Object.assign(m, { alphaTest: 0.5, alphaToCoverage: true });   // a crisp cut-out: no sorting trouble
+  m.userData.base = new THREE.Color(p.col || '#ffffff'); m.userData.grade = o.add ? 0 : o.grade ?? 1; GRADED.push(m);
+  return m;
+}
+function shadeOn(m, k = 1) { const s = new THREE.Mesh(m.geometry, new THREE.ShadowMaterial({ opacity: 0.3 * k, depthWrite: false })); s.receiveShadow = true; s.userData.k = k; s.renderOrder = (m.renderOrder || 0) + 1; m.add(s); SHADES.push(s); MESHES++; return s; }   // shadows of other cards fall on this one (opaque cards only)
+function sheet(g, p, w, h, x, y, z, o, name) {
+  const at = o.at || 'base', geom = new THREE.PlaneGeometry(w, h, o.bend ? 32 : 1, 1);
+  const up = at === 'center' ? 0 : at === 'top' ? -h / 2 : h / 2;   // 'base', 'left' and 'right' stand on y; 'left' and 'right' hinge on that side
+  geom.translate(at === 'left' ? w / 2 : at === 'right' ? -w / 2 : 0, up, 0);
+  if (o.bend) { const R = o.bend, ps = geom.attributes.position; for (let i = 0; i < ps.count; i++) { const a = ps.getX(i) / R; ps.setX(i, R * Math.sin(a)); ps.setZ(i, ps.getZ(i) + R * (1 - Math.cos(a))); } geom.computeVertexNormals(); }   // a curved backdrop: its sides come toward you (negative: away)
+  const m = new THREE.Mesh(geom, cmat(p, o)); m.position.set(x, y, z); m.rotation.order = 'YXZ'; m.rotation.set(o.rx || 0, o.ry || 0, o.rz || 0);
+  if (o.flip) m.scale.x = -1; m.castShadow = !!o.cast; m.renderOrder = o.order || 0;
+  if (o.catch) shadeOn(m, o.catch === true ? 1 : o.catch);
+  if (o.bill) BILL.push(m);
+  g.add(m); MESHES++;
+  const cy = up, cx = at === 'left' ? w / 2 : at === 'right' ? -w / 2 : 0;
+  CARDS.push({ name, lvl: CURKEY, c: [x + cx * Math.cos(o.ry || 0), y + cy, z - cx * Math.sin(o.ry || 0)], ry: o.ry || 0, rx: o.rx || 0, bill: !!o.bill, flat: !!o.flat, r: Math.max(w, h) / 2 });
+  return m;
+}
+function card(g, key, w, x, y, z, o = {}) {   // stands at x, y, z (o.at: 'base' | 'center' | 'top' | 'left' | 'right': which point that is; left and right stand on y and hinge there); w metres wide (or w null and o.h tall)
+  const p = pic(key); if (w == null) w = (o.h || 1) * p.r; const h = p.col ? o.h ?? w : w / p.r;
+  return sheet(g, p, w, h, x, y, z, o, typeof key === 'string' ? key : o.name || 'drawing');
+}
+function ground(g, key, w, x, y, z, o = {}) {   // a floor or the earth lying flat at height y, centred on x, z; its depth from the picture, or o.d with o.tile (metres one picture covers)
+  const p = pic(key), d = o.d ?? (p.col ? w : w / p.r);
+  if (o.tile && p.t) { p.t.wrapS = p.t.wrapT = THREE.RepeatWrapping; p.t.repeat.set(w / o.tile, d / (o.tile / p.r)); }
+  GROUNDS.push({ key: CURKEY, name: typeof key === 'string' ? key : 'ground', y, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  return sheet(g, p, w, d, x, y, z, { catch: 1, ...o, at: 'center', rx: -Math.PI / 2 + (o.rx || 0), flat: true }, typeof key === 'string' ? key : 'ground');
+}
+function solid(g, kind, size, key, x, y, z, o = {}) {   // a painted 3D form, only where no card can do it: 'sphere' r, 'disc' r (o.t thick), 'cylinder' r (o.h, o.open), 'box' [w, h, d]; centred on x, y, z
+  const s = [].concat(size), geo = kind === 'sphere' ? new THREE.SphereGeometry(s[0], 64, 40) : kind === 'disc' ? new THREE.CylinderGeometry(s[0], s[0], o.t || s[0] * 0.12, 64) : kind === 'cylinder' ? new THREE.CylinderGeometry(s[0], s[0], o.h || s[0] * 2, 64, 1, !!o.open) : new THREE.BoxGeometry(s[0], s[1] ?? s[0], s[2] ?? s[0]);
+  const m = new THREE.Mesh(geo, cmat(pic(key), { ...o, double: !!o.open })); m.position.set(x, y, z); m.rotation.order = 'YXZ'; m.rotation.set(o.rx || 0, o.ry || 0, o.rz || 0); m.castShadow = !!o.cast; g.add(m); MESHES++; return m;
+}
+let GLOWT = null, BEAMT = null;
+function glow(g, x, y, z, size, col, o = {}) {   // a soft halo of light (added light): a sprite that always faces you, or o.flat: a pool of light on a surface (turn it with o.ry, o.rx)
+  GLOWT = GLOWT || drawing2d(128, 128, c => { const r = c.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,0.95)'); r.addColorStop(0.3, 'rgba(255,255,255,0.38)'); r.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = r; c.fillRect(0, 0, 128, 128); }).tex;
+  const mt = { map: GLOWT, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false, toneMapped: false, opacity: o.alpha ?? 1 };
+  const s = o.flat ? new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ ...mt, side: THREE.DoubleSide })) : new THREE.Sprite(new THREE.SpriteMaterial(mt));
+  s.position.set(x, y, z); s.scale.set(size, size, 1); if (o.flat) { s.rotation.order = 'YXZ'; s.rotation.set(o.rx || 0, o.ry || 0, 0); } g.add(s); MESHES++; return s;
+}
+function beam(g, x, y, z, w, h, col, o = {}) {   // a shaft of light (added light) hanging down from x, y, z: tilt with o.rz, turn with o.ry, o.bill turns it to you
+  BEAMT = BEAMT || drawing2d(128, 256, (c, w, h) => { const a = c.createLinearGradient(0, 0, w, 0); a.addColorStop(0, 'rgba(255,255,255,0)'); a.addColorStop(0.5, 'rgba(255,255,255,0.75)'); a.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = a; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'destination-in'; const v = c.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,0.2)'); v.addColorStop(0.15, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = v; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over'; }).tex;
+  const geom = new THREE.PlaneGeometry(w, h); geom.translate(0, -h / 2, 0);
+  const m = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ map: BEAMT, color: col, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, toneMapped: false, opacity: o.alpha ?? 0.5 }));
+  m.position.set(x, y, z); m.rotation.order = 'YXZ'; m.rotation.set(0, o.ry || 0, o.rz || 0); if (o.bill) BILL.push(m); g.add(m); MESHES++; return m;
+}
+
+// ════ PAINTING TOOLS: p5.js plus a few helpers. Each helper takes the p5.Graphics `p` (or, inside the engine, a raw context) ════
+const isP5 = c => !!(c && c.drawingContext);
+const rr = (c, x, y, w, h, r, col) => { if (isP5(c)) { c.noStroke(); c.fill(col); c.rect(x, y, w, h, r); return; } c.fillStyle = col; c.beginPath(); c.roundRect(x, y, w, h, r); c.fill(); };
+const dot = (c, x, y, r, col) => { if (isP5(c)) { c.noStroke(); c.fill(col); c.circle(x, y, r * 2); return; } c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
+const poly = (c, pts, col) => { if (isP5(c)) { c.noStroke(); c.fill(col); c.beginShape(); pts.forEach(([x, y]) => c.vertex(x, y)); c.endShape(c.CLOSE); return; } c.fillStyle = col; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
+function blob(c, x, y, r, col, o = {}) {   // an organic round shape (bush, cloud, rock, crowd of leaves): o.wob 0..0.45, o.n points, o.sy squash, o.seed
+  const q = rng(o.seed || 1), n = o.n || 9, wob = o.wob ?? 0.18, sy = o.sy ?? 1, pts = [];
+  for (let i = 0; i < n; i++) { const a = i / n * TAU, k = 1 + (q() - 0.5) * 2 * wob; pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k * sy]); }
+  if (isP5(c)) { c.noStroke(); c.fill(col); c.beginShape(); [pts[n - 1], ...pts, pts[0], pts[1]].forEach(([px, py]) => c.curveVertex(px, py)); c.endShape(c.CLOSE); return; }   // a closed smooth curve through the points
+  c.fillStyle = col; c.beginPath();
+  for (let i = 0; i <= n; i++) { const p0 = pts[i % n], p1 = pts[(i + 1) % n], mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2; if (i === 0) c.moveTo(mx, my); else c.quadraticCurveTo(p0[0], p0[1], mx, my); }
+  c.closePath(); c.fill();
+}
+function grain(c, w, h, k = 0.08, seed = 1) {   c = c.drawingContext || c;   // speckle what is painted (paper, film, print): k 0.03..0.2; transparency is kept
+  const im = c.getImageData(0, 0, w, h), d = im.data, q = rng(seed);
+  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const n = (q() - 0.5) * 2 * k * 255; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  c.putImageData(im, 0, 0);
+}
+// noise: smooth 0..1 for grain, plaster, marble, clouds, water; u, v run 0..1 across the canvas and repeat at its edges (tileable)
+function noise(u, v, o = {}) {
+  const s = o.seed || 1, hs = (i, j, k) => { let n = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(s * 31 + k, 1442695041)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  let sum = 0, amp = 1, tot = 0, p = Math.max(1, Math.round(o.period || 6));
+  for (let k = 0; k < (o.oct ?? 4); k++, p *= 2, amp *= 0.5) {
+    const X = u * p, Y = v * p, xi = Math.floor(X), yi = Math.floor(Y), fx = X - xi, fy = Y - yi, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy), m = i => ((i % p) + p) % p;
+    const a = hs(m(xi), m(yi), k), b = hs(m(xi + 1), m(yi), k), c = hs(m(xi), m(yi + 1), k), d = hs(m(xi + 1), m(yi + 1), k);
+    sum += amp * (a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy); tot += amp;
+  }
+  return sum / tot;
+}
+// pixels: paints every pixel from fn(u, v) → [r, g, b] or [r, g, b, a] (0..255); it replaces what is there, so paint shapes after it
+function pixels(c, w, h, fn) {
+  c = c.drawingContext || c;
+  const im = c.createImageData(w, h), d = im.data;
+  for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i += 4) { const q = fn((x + 0.5) / w, (y + 0.5) / h); d[i] = q[0]; d[i + 1] = q[1]; d[i + 2] = q[2]; d[i + 3] = q[3] ?? 255; }
+  c.putImageData(im, 0, 0);
+}
+// wrap: paints fn nine times so a shape crossing an edge continues on the opposite edge (seamless tiles); make fn's rng inside it
+const wrap = (c, w, h, fn) => { for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { if (isP5(c)) { c.push(); c.translate(dx, dy); fn(c); c.pop(); } else { c.save(); c.translate(dx, dy); fn(c); c.restore(); } } };
+// gradient / radial: p5 has no gradients, so the next fills use one (they also switch fill back on after p.noFill()): gradient(p, x0, y0, x1, y1, [[0, '#fff'], [1, 'rgba(0,0,0,0)']]), then p.rect(…), p.circle(…), p.beginShape(…); the next p.fill() ends it
+function gradient(p, x0, y0, x1, y1, stops) { const x = p.drawingContext, g = x.createLinearGradient(x0, y0, x1, y1); stops.forEach(([s, col]) => g.addColorStop(s, col)); p.fill(0); x.fillStyle = g; if (p._renderer) p._renderer._cachedFillStyle = null; p.noStroke(); return g; }
+function radial(p, x, y, r0, r1, stops) { const c = p.drawingContext, g = c.createRadialGradient(x, y, r0, x, y, r1); stops.forEach(([s, col]) => g.addColorStop(s, col)); p.fill(0); c.fillStyle = g; if (p._renderer) p._renderer._cachedFillStyle = null; p.noStroke(); return g; }
+// wash: soft clouds of paint over the picture from noise (light and shadow mottling, damp paper); o: seed, period, lo and hi [r, g, b, a] (the colours at noise 0 and 1), atop (keep it inside what is painted), res (coarseness)
+function wash(p, w, h, o = {}) {
+  const res = o.res || 4, sw = Math.ceil(w / res), sh = Math.ceil(h / res), s = scratch(sw, sh, 7), lo = o.lo || [0, 0, 0, 0], hi = o.hi || [0, 0, 0, 60];
+  pixels(s.ctx, sw, sh, (u, v) => mixv(lo, hi, noise(u, v, { period: o.period || 5, oct: 4, seed: o.seed || 1 })));
+  const x = p.drawingContext || p; x.save(); x.globalCompositeOperation = o.atop ? 'source-atop' : 'source-over'; x.imageSmoothingEnabled = true; x.drawImage(s.cv, 0, 0, w, h); x.restore();
+}
+// shadow: the next shapes and text cast a soft shadow or halo (blur px, colour, offset x, y); shadow(p, 0) ends it (so does p.pop())
+function shadow(p, blur, col = 'rgba(0,0,0,0.6)', ox = 0, oy = 0) { const x = p.drawingContext || p; x.shadowBlur = blur; x.shadowColor = blur ? col : 'rgba(0,0,0,0)'; x.shadowOffsetX = ox; x.shadowOffsetY = oy; }
+// textDir: 'rtl' for Arabic lines (marks and joining stay right), 'ltr' back
+function textDir(p, dir) { (p.drawingContext || p).direction = dir; }
+// soft: paints fn() blurred by px (a shadow, mist, a glow, depth of field): soft(p, 12, () => p.ellipse(…))
+function soft(p, px, fn) { p.push(); p.drawingContext.filter = `blur(${px}px)`; fn(); p.pop(); }
+const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+
+// ════ PARTICLES: painted specks drifting in 3D (dust, rain, snow, sparks, embers, petals, leaves, bubbles); every position comes from the time (call them in animate) ════
+const PT = (() => {
+  const N = 1500, pools = {}, ob = new THREE.Object3D(), C = new THREE.Color(), QZ = new THREE.Quaternion(), ZA = new THREE.Vector3(0, 0, 1);
+  const SHAPE = {
+    dot: (c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.7)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); },
+    disc: (c, w, h) => dot(c, w / 2, h / 2, w * 0.42, '#fff'),
+    spark: (c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.12, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, 'rgba(255,255,255,0.25)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); },
+    streak: (c, w, h) => { const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'destination-in'; const v = c.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(0.5, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = v; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over'; },
+    petal: (c, w, h) => { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(w / 2, h * 0.06); c.bezierCurveTo(w * 1.02, h * 0.3, w * 0.84, h * 0.86, w / 2, h * 0.94); c.bezierCurveTo(w * 0.16, h * 0.86, -w * 0.02, h * 0.3, w / 2, h * 0.06); c.fill(); },
+    leaf: (c, w, h) => { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(w / 2, h * 0.02); c.quadraticCurveTo(w * 1.05, h * 0.5, w / 2, h * 0.98); c.quadraticCurveTo(-w * 0.05, h * 0.5, w / 2, h * 0.02); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = w * 0.05; c.beginPath(); c.moveTo(w / 2, h * 0.1); c.lineTo(w / 2, h * 0.92); c.stroke(); },
+    flake: (c, w, h) => { c.strokeStyle = '#fff'; c.lineCap = 'round'; c.lineWidth = w * 0.07; for (let i = 0; i < 6; i++) { c.save(); c.translate(w / 2, h / 2); c.rotate(i * TAU / 6); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -h * 0.42); c.moveTo(0, -h * 0.26); c.lineTo(w * 0.1, -h * 0.34); c.moveTo(0, -h * 0.26); c.lineTo(-w * 0.1, -h * 0.34); c.stroke(); c.restore(); } },
+    ring: (c, w, h) => { c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = w * 0.07; c.beginPath(); c.arc(w / 2, h / 2, w * 0.4, 0, TAU); c.stroke(); dot(c, w * 0.36, h * 0.34, w * 0.07, 'rgba(255,255,255,0.9)'); },
+  };
+  const pool = (shape, add) => {
+    const k = shape + (add ? '+' : ''); if (pools[k]) return pools[k];
+    const own = !!SHAPE[shape], tex = own ? drawing2d(shape === 'streak' ? 16 : 64, 64, SHAPE[shape]).tex : pic(shape).t;
+    const m = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, fog: !add, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending }), N);
+    m.frustumCulled = false; m.count = 0; world.add(m); MESHES++;
+    return (pools[k] = { m, n: 0, add, ar: own ? (shape === 'streak' ? 4 : 1) : 1 / pic(shape).r });
+  };
+  const put = (P, x, y, z, s, col, sy = 1, a = 0, sx = 1) => {
+    if (P.n >= N || !(s > 1e-9)) return;
+    ob.position.set(x, y, z); ob.quaternion.copy(camera.quaternion); if (a) ob.quaternion.multiply(QZ.setFromAxisAngle(ZA, a)); ob.scale.set(s * sx, s * P.ar * sy, 1); ob.updateMatrix();
+    P.m.setMatrixAt(P.n, ob.matrix); P.m.setColorAt(P.n, C.set(col)); P.n++;
+  };
+  const look = (o, r, age, ph) => [o.spin ? ph + o.spin * age * (r < 0.5 ? -1 : 1) : 0, o.flutter ? 0.25 + 0.75 * Math.abs(Math.cos(age * o.flutter + ph)) : 1];   // turning, and the flip of a falling leaf
+  return {
+    begin() { for (const k in pools) pools[k].n = 0; },
+    end() { for (const k in pools) { const P = pools[k]; P.m.count = P.n; P.m.instanceMatrix.needsUpdate = true; if (P.m.instanceColor) P.m.instanceColor.needsUpdate = true; } },
+    grade(c) { for (const k in pools) if (!pools[k].add) pools[k].m.material.color.copy(c); },
+    // stream: a flow from org: o.t0, o.t1, rate (per s), life (s), v [x, y, z] (m/s), g (gravity), spread (x and z), spreadY, wob, size, col (one or a list), shape ('dot' | 'disc' | 'spark' | 'streak' | 'petal' | 'leaf' | 'flake' | 'ring' | a PICS key), add (light), streak (stretch), spin, flutter, fade (false: no fade in and out), s (the place's scale: lv(key).s), seed
+    stream(org, T, o = {}) {
+      const P = pool(o.shape || 'dot', o.add), q = o.s || 1, rate = o.rate || 20, life = o.life || 1.6, t0 = o.t0 ?? -life, v = (o.v || [0, 0.5, 0]).map(w => w * q), sp = (o.spread ?? 0.15) * q, spy = (o.spreadY ?? 0) * q, cols = [].concat(o.col || '#ffffff');
+      for (let i = Math.max(0, Math.floor((T - life - t0) * rate)), i1 = Math.floor((Math.min(T, o.t1 ?? 1e9) - t0) * rate); i <= i1; i++) {
+        const r = rng((o.seed || 1) * 7919 + i), age = T - t0 - i / rate; if (age < 0 || age > life) continue;
+        const jx = (r() - 0.5) * sp, jy = (r() - 0.5) * spy, jz = (r() - 0.5) * sp, ph = r() * TAU, s = (o.size || 0.07) * q * (0.6 + 0.8 * r()) * (o.fade === false ? 1 : Math.sin(Math.PI * age / life)), col = cols[Math.floor(r() * cols.length)], [a, sx] = look(o, r(), age, ph);
+        put(P, org[0] + jx + v[0] * age + Math.sin(age * 3 + ph) * (o.wob ?? 0.06) * q, org[1] + jy + v[1] * age + 0.5 * (o.g || 0) * q * age * age, org[2] + jz + v[2] * age, s, col, o.streak || 1, a, sx);
+      }
+    },
+    // motes: specks hanging and drifting in a box above org: o.n, box [w, h, d], y, size, col, shape, add, spin, flutter, s, seed
+    motes(org, T, o = {}) {
+      const P = pool(o.shape || 'dot', o.add), q = o.s || 1, b = (o.box || [5, 2.5, 4]).map(v => v * q), cols = [].concat(o.col || '#FFE3A8');
+      for (let i = 0; i < (o.n || 30); i++) { const r = rng(300 + i + (o.seed || 0) * 97), ph = r() * TAU, col = cols[Math.floor(r() * cols.length)], [a, sx] = look(o, r(), T, ph); put(P, org[0] + (r() - 0.5) * b[0] + Math.sin(T * 0.5 + ph) * 0.2 * q, org[1] + (o.y ?? 1) * q + r() * b[1] + Math.sin(T * 0.7 + ph) * 0.15 * q, org[2] + (r() - 0.5) * b[2], (o.size || 0.035) * q * (0.6 + 0.4 * Math.sin(T * 1.3 + ph)), col, 1, a, sx); }
+    },
+    // burst: a ring of specks thrown out from org at time t0: o.n, speed, up, life, size, col, shape, add, s
+    burst(org, T, t0, o = {}) {
+      const P = pool(o.shape || 'dot', o.add), q = o.s || 1, age = T - t0, life = o.life || 0.8; if (age < 0 || age > life) return;
+      for (let i = 0, n0 = o.n || 8; i < n0; i++) { const a = i * TAU / n0, sp = (o.speed || 1.2) * q; put(P, org[0] + Math.cos(a) * age * sp, org[1] + age * (o.up ?? 0.6) * q - age * age * 0.5 * q, org[2] + Math.sin(a) * age * sp, (o.size || 0.06) * q * (1 - age / life), o.col || '#ffffff'); }
+    },
+  };
+})();
+
+// ════ CAMERA: CAM keys [time, place (null: world), position, look-at, lens (vertical fov°), { e, via, veil, follow, fw }] ════
+const BREATH = { a: 1 };   // hand-held breath, a few centimetres (0: locked off)
+let KEYS = [], LROWS = [];
+const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], norm3 = a => { const l = Math.hypot(...a) || 1; return a.map(v => v / l); };
+const CENTER = () => { const v = Object.keys(WORLD).filter(k => !lv(k).par).map(k => lv(k).o); return [0, 1, 2].map(i => v.reduce((s, p) => s + p[i], 0) / v.length); };
+const gmix = (a, b, k) => a * Math.pow(b / a, k);   // geometric mix: sizes and distances change by the same ratio every frame
+function slerp(a, b, t) {   // turn evenly from direction a to b
+  const c = Math.max(-1, Math.min(1, dot3(a, b))), th = Math.acos(c); if (th < 1e-3) return norm3(mixv(a, b, t));
+  if (th > Math.PI - 1e-3) b = norm3(add3(b, [0, 0.02, 0]));
+  const s = Math.sin(th); return norm3(add3(a.map(v => v * Math.sin((1 - t) * th) / s), b.map(v => v * Math.sin(t * th) / s)));
+}
+function camAt(T) {
+  let i = 0; while (i < KEYS.length - 2 && T >= KEYS[i + 1].t) i++;
+  const a = KEYS[i], b = KEYS[Math.min(i + 1, KEYS.length - 1)], u = b.t > a.t ? clamp01((T - a.t) / (b.t - a.t)) : 1, x = b.x, k = (Ease[x.e] || Ease.sm)(u);
+  const D0 = sub3(a.p, a.l), D1 = sub3(b.p, b.l), d0 = Math.hypot(...D0) || 1e-9, d1 = Math.hypot(...D1) || 1e-9;
+  const zoom = x.e === 'zoom' || (!x.e && Math.max(d0, d1) / Math.min(d0, d1) > 6) || Math.max(a.s, b.s) / Math.min(a.s, b.s) > 6;   // a change of scale: the distance changes geometrically
+  let p, l, o, kk = k;
+  if (zoom) {
+    const dk = gmix(d0, d1, kk), f = Math.abs(d0 - d1) > 1e-12 ? (dk - d1) / (d0 - d1) : 1 - kk, dir = slerp(D0.map(v => v / d0), D1.map(v => v / d1), kk);
+    l = add3(b.l, sub3(a.l, b.l).map(v => v * f)); p = add3(l, dir.map(v => v * dk)); o = add3(b.o, sub3(a.o, b.o).map(v => v * f));
+    if (x.via) p = p.map((v, j) => v + 2 * kk * (1 - kk) * (x.via[j] - (a.p[j] + b.p[j]) / 2));   // via bends a zoom too
+  } else {
+    p = mixv(a.p, b.p, k); l = mixv(a.l, b.l, k); o = mixv(a.o, b.o, k);
+    if (x.via) p = p.map((_, j) => (1 - k) * (1 - k) * a.p[j] + 2 * (1 - k) * k * x.via[j] + k * k * b.p[j]);
+  }
+  if (x.follow) l = mixv(l, x.follow(T), (x.fw ?? 0.8) * Math.sin(Math.PI * u));
+  const d = Math.hypot(...sub3(p, l)), br = 0.004 * d * BREATH.a, fv = norm3(sub3(l, p)); let up = norm3(mixv(a.u, b.u, kk));
+  const dn = Math.abs(dot3(fv, up)); if (dn > 0.9) up = norm3(mixv(up, norm3(mixv(a.n, b.n, kk)), sm(0.9, 0.995, dn)));   // a top-down shot: up turns to the level's north (−z)
+  p = [p[0] + Math.sin(T * 0.9) * br, p[1] + Math.sin(T * 1.3 + 1) * br * 0.75, p[2]];
+  const c = { p, l, u: up, d, f: mix(a.f, b.f, k), o, w: mix(a.w, b.w, k), s: gmix(a.s, b.s, kk), sh: mix(a.sh, b.sh, kk), a, b, k: kk };
+  return typeof camMod === 'function' ? camMod(T, c) || c : c;
+}
+function screenOf(pt, T) { const c = camAt(T), f = norm3(sub3(c.l, c.p)), r = norm3(cross3(f, c.u)), u = cross3(r, f), d = sub3(pt, c.p), z = dot3(d, f); if (z < c.d * 0.002) return null; const t = Math.tan(c.f * Math.PI / 360); return [W / 2 + dot3(d, r) / z / (t * W / H) * W / 2, H / 2 - dot3(d, u) / z / t * H / 2, z]; }
+const screenR = (pt, r, T) => { const s = screenOf(pt, T); return s ? r / s[2] / Math.tan(camAt(T).f * Math.PI / 360) * H / 2 : null; };   // on-screen radius (px) of a ball of radius r at pt
+function clearance(T) {   // the camera's height above the floors of the places it is in, in that place's metres
+  const c = camAt(T); let best = null;
+  for (const g of GROUNDS) { if (g.key !== c.a.key && g.key !== c.b.key) continue; const L = lv(g.key), q = apM(tM(L.M), sub3(c.p, L.o)).map(v => v / L.s); if (q[0] > g.x0 && q[0] < g.x1 && q[2] > g.z0 && q[2] < g.z1) { const y = q[1] - g.y; if (!best || y < best.y) best = { y, key: g.key }; } }
+  return best;
+}
+
+// ════ LIGHT: LIGHTS rows [time, preset or { sky, grade, haze, sun, shade }, shadow box half-size (7)], blended smoothly ════
+// sky: the background colour; grade: a tint over every painted card (white leaves the paint as painted; it tints everything, so give lit things grade: 0 or less); haze: the fog colour (default the sky); sun: where cast shadows come from (offset in the place's metres); shade: shadow strength
+const LIGHT = {
+  night: { sky: '#0f1832', grade: '#7482b0', sun: [-4, 8, 6] }, lamp: { sky: '#141d36', grade: '#e2bf98', haze: '#2a2440', sun: [-3, 7, 6], shade: 0.4 }, dawn: { sky: '#e6b6a2', grade: '#f1c8b6', haze: '#efc9b6', sun: [-9, 3, 5] },
+  morning: { sky: '#f2d2a4', grade: '#fde8cc', sun: [-6, 6, 7] }, day: { sky: '#bcd8f0', grade: '#ffffff', sun: [4, 9, 6] }, noon: { sky: '#cfe5f7', grade: '#ffffff', sun: [1, 12, 4], shade: 0.36 },
+  evening: { sky: '#e0884f', grade: '#ffcfa0', haze: '#eaa070', sun: [9, 3.5, 5] }, dusk: { sky: '#6c77a8', grade: '#b4a5cd', sun: [8, 4, 5] },
+  overcast: { sky: '#aab5c1', grade: '#e0e5ea', sun: [2, 12, 3], shade: 0.12 }, storm: { sky: '#56606e', grade: '#9aa3b1', sun: [3, 10, 4], shade: 0.12 },
+  space: { sky: '#05070f', grade: '#ffffff', sun: [-12, 4, 6], shade: 0.5 }, under: { sky: '#160f0b', grade: '#c99d76', sun: [-2, 9, 3], shade: 0.2 },
+};
+const QW = new THREE.Quaternion(), EW = new THREE.Euler(0, 0, 0, 'YXZ');
+const BG = new THREE.Color(), GRADE = new THREE.Color(), C1 = new THREE.Color(), C2 = new THREE.Color(), C3 = new THREE.Color(), WHITE = new THREE.Color('#ffffff'), V3 = new THREE.Vector3();
+function lightsAt(T, c) {
+  let i = 0; while (i < LROWS.length - 2 && T >= LROWS[i + 1][0]) i++;
+  const A = LROWS[i], B = LROWS[Math.min(i + 1, LROWS.length - 1)], k = B[0] > A[0] ? sm(A[0], B[0], T) : 1, a = A[1], b = B[1], col = (x, y) => C1.set(x).lerp(C2.set(y), k);
+  BG.copy(col(a.sky, b.sky)); scene.background = BG; scene.fog.color.copy(col(a.haze || a.sky, b.haze || b.sky)); GRADE.copy(col(a.grade || '#ffffff', b.grade || '#ffffff'));
+  for (const m of GRADED) m.color.copy(m.userData.base).multiply(C3.copy(WHITE).lerp(GRADE, m.userData.grade));   // the painted world takes the light of the hour
+  PT.grade(GRADE);
+  const s = c.s, off = mixv(a.sun || [3, 8, 6], b.sun || [3, 8, 6], k), W3 = v => norm3(mixv(apM(c.a.M, v), apM(c.b.M, v), c.k)).map(q => q * Math.hypot(...v) * s);
+  const half = Math.max(mix(A[2], B[2], k), c.sh) * s, tg = c.w > 0.5 ? c.o : c.l, so = norm3(W3(off)).map(v => v * (half + 15 * s));   // the shadow box follows what the camera looks at
+  sun.position.set(tg[0] + so[0], tg[1] + so[1], tg[2] + so[2]); sun.target.position.set(...tg);
+  const sc = sun.shadow.camera;
+  if (Math.abs(sc.right - half) > half * 1e-3) { sc.left = sc.bottom = -half; sc.right = sc.top = half; sc.near = 0.05 * s; sc.far = 2 * half + 40 * s; sc.updateProjectionMatrix(); sun.shadow.normalBias = 0.02 * s; }
+  const sh = mix(a.shade ?? 0.3, b.shade ?? 0.3, k); for (const m of SHADES) m.material.opacity = sh * m.userData.k;
+  const fa = c.a.fog ? c.a.fog.map(v => v * c.a.s) : [1e7 * c.a.s, 2e7 * c.a.s], fb = c.b.fog ? c.b.fog.map(v => v * c.b.s) : [1e7 * c.b.s, 2e7 * c.b.s];   // haze belongs to each place
+  scene.fog.near = gmix(fa[0], fb[0], c.k); scene.fog.far = gmix(fa[1], fb[1], c.k);
+}
+
+// ════ CAPTIONS: line by line in the upper safe area, drawn over the picture (so they are recorded) ════
+const CAPTIONS = { y: 0.25, size: 72, maxWidth: 860, maxLines: 3, maxWords: 7, color: '#F6EEDA', emphasis: '#E9B44C', outline: 8, outlineColor: '#12171A', shadow: null, font: 'Libre Baskerville', weight: 700 };   // font: any Google Font that has this weight; shadow: [blur px, colour] for a soft halo
+const ovScene = new THREE.Scene(), ovCam = new THREE.OrthographicCamera(0, W, H, 0, -1, 1);
+const overlay = (d, w, h, y, ord) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: d.tex, transparent: true, depthTest: false, toneMapped: false })); m.position.set(W / 2, y, 0); m.renderOrder = ord; ovScene.add(m); return m; };
+const VIG = overlay(drawing2d(64, 128, c => { const g = c.createRadialGradient(32, 64, 12, 32, 64, 84); g.addColorStop(0, 'rgba(10,12,14,0)'); g.addColorStop(1, 'rgba(10,12,14,1)'); c.fillStyle = g; c.fillRect(0, 0, 64, 128); }), W, H, H / 2, 0);
+const GRAIN = overlay(drawing2d(256, 256, (c, w, h) => pixels(c, w, h, () => { const v = Math.random() * 255; return [v, v, v, 255]; })), W, H, H / 2, 0.2); GRAIN.material.map.wrapS = GRAIN.material.map.wrapT = THREE.RepeatWrapping; GRAIN.material.map.repeat.set(W / 256, H / 256);
+const VEIL = [21, 37].map((sd, i) => { const d = drawing2d(512, 512, (c, w, h) => pixels(c, w, h, (u, v) => { const n = noise(u, v, { period: 3, oct: 5, seed: sd }), b = 190 + 65 * sm(0.3, 0.72, n); return [b, b, b, 255 * (0.42 + 0.58 * sm(0.36, 0.6, n))]; })); const m = overlay(d, W * 1.6, H * 1.6, H / 2, 0.5); m.visible = false; return m; });   // CAM option veil: the camera passes through cloud
+const CAPH = 600, CAPD = drawing2d(W, CAPH, () => {}), cap = overlay(CAPD, W, CAPH, H * 0.75, 1);
+function chunks(text, t0, t1) {
+  const toks = []; let em = false; for (const part of String(text).split('*')) { part.split(/\s+/).filter(Boolean).forEach(w => toks.push({ w, em })); em = !em; }
+  let groups = [toks]; const max = CAPTIONS.maxWords;
+  if (max > 0 && toks.length > Math.ceil(max * 1.25)) {
+    groups = []; let cur = [];
+    toks.forEach((tk, i) => { cur.push(tk); if (toks.length - i - 1 > 1 && (cur.length >= max || (/[,.;:!?—–]$/.test(tk.w) && cur.length >= Math.ceil(max / 2)))) { groups.push(cur); cur = []; } });
+    if (cur.length) groups.push(cur); if (groups.length > 1 && groups[groups.length - 1].length < 3) groups[groups.length - 2].push(...groups.pop());
+  }
+  const wt = g => g.reduce((s, tk) => s + tk.w.length + 1, 0) + 3, total = groups.reduce((s, g) => s + wt(g), 0); let t = t0;
+  return groups.map(g => { const d = (t1 - t0) * wt(g) / total, c = { t0: t, t1: t + d, toks: g }; t += d; return c; });
+}
+function layout(c, x) {
+  if (c.lay) return c.lay;
+  let size = CAPTIONS.size, sp = 0, lines;
+  const wrap = mw => { const ls = []; let cur = { words: [], w: 0 }; for (const tk of c.toks) { const ww = x.measureText(tk.w).width, nw = cur.words.length ? cur.w + sp + ww : ww; if (cur.words.length && nw > mw) { ls.push(cur); cur = { words: [{ ...tk, ww }], w: ww }; } else { cur.words.push({ ...tk, ww }); cur.w = nw; } } ls.push(cur); return ls; };
+  for (;;) { x.font = `${CAPTIONS.weight || 700} ${size}px "${CAPTIONS.font}", Georgia, serif`; sp = x.measureText(' ').width; lines = wrap(CAPTIONS.maxWidth); if (lines.length <= CAPTIONS.maxLines || size <= 40) break; size -= 4; }
+  if (lines.length > 1) { let lo = CAPTIONS.maxWidth * 0.4, hi = CAPTIONS.maxWidth; for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (wrap(mid).length <= lines.length) hi = mid; else lo = mid; } lines = wrap(hi); }
+  return (c.lay = { size, lines, sp });
+}
+let capKey = '';
+function drawCaption(T) {
+  const c = TL.caps.find(q => T >= q.t0 && T < q.t1), first = c && c.t0 <= 0.001, age = c ? T - c.t0 : 0;
+  const k = !c || first ? 1 : clamp01(age / 0.25), a = !c ? 0 : first ? 1 : clamp01(age / 0.1) * clamp01((c.t1 - T) / 0.1), key = c ? `${TL.caps.indexOf(c)}|${k.toFixed(2)}|${a.toFixed(2)}` : '-';
+  if (key === capKey) return; capKey = key;
+  const x = CAPD.ctx; x.clearRect(0, 0, W, CAPH);
+  if (c) {
+    const L = layout(c, x), lh = L.size * 1.3, off = (1 - k) * (1 - k) * 28;
+    x.globalAlpha = a; x.font = `${CAPTIONS.weight || 700} ${L.size}px "${CAPTIONS.font}", Georgia, serif`; if (CAPTIONS.shadow) { x.shadowBlur = CAPTIONS.shadow[0]; x.shadowColor = CAPTIONS.shadow[1]; } x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = CAPTIONS.outline * 2; x.strokeStyle = CAPTIONS.outlineColor;
+    L.lines.forEach((ln, j) => { let px = (W - ln.w) / 2; const py = CAPH / 2 + (j - (L.lines.length - 1) / 2) * lh + off; for (const wd of ln.words) { if (CAPTIONS.outline) x.strokeText(wd.w, px, py); x.fillStyle = wd.em ? CAPTIONS.emphasis : CAPTIONS.color; x.fillText(wd.w, px, py); px += wd.ww + L.sp; } });
+    x.globalAlpha = 1; x.shadowBlur = 0; x.shadowColor = 'transparent';
+  }
+  CAPD.tex.needsUpdate = true;
+}
+
+// ════ TIMELINE: length = script end + End screen hold; captions; sound cues ════
+let TL = { len: 1, caps: [], cues: [] };
+const UI = { hold: 0, vol: 0.8, hear: true };
+function retime() {
+  const end = Math.max(...SCRIPT.map(l => l.end)), len = Math.max(0.5, end + UI.hold), caps = [], cues = [];
+  for (const l of SCRIPT) {
+    const own = chunks(l.text, l.start, Math.min(l.end, len)); if (l.hold && own.length) own[own.length - 1].t1 = len + 1; caps.push(...own);
+    for (const c of l.sfx || []) { const time = c.fromEnd != null ? len - c.fromEnd : l.start + (c.at || 0); if (time >= 0 && time < len) cues.push(c.toEnd ? { ...c, time, dur: Math.max(0.3, len - time) } : { ...c, time }); }
+  }
+  cues.sort((a, b) => a.time - b.time); TL = { len, caps, cues }; capKey = '';
+  KEYS = CAM.map(k => { const L = k[1] ? lv(k[1]) : { o: CENTER(), s: 1, M: ID, u: [0, 1, 0], fog: [40, 140], sh: 7 }; return { key: k[1] || null, t: k[0] < 0 ? len + k[0] : k[0], p: k[1] ? AT(k[1], k[2]) : k[2], l: k[1] ? AT(k[1], k[3]) : k[3], f: k[4], o: L.o, s: L.s, M: L.M, u: L.u, n: apM(L.M, [0, 0, -1]), fog: L.fog, sh: L.sh, w: k[1] ? 0 : 1, x: k[5] && k[5].via && k[1] ? { ...k[5], via: AT(k[1], k[5].via) } : k[5] || {} }; }).sort((a, b) => a.t - b.t);
+  LROWS = LIGHTS.map(r => [r[0] < 0 ? len + r[0] : r[0], typeof r[1] === 'string' ? LIGHT[r[1]] || (console.warn('Unknown light preset', r[1]), LIGHT.day) : { ...LIGHT.day, ...r[1] }, r[2] || 7]).sort((a, b) => a[0] - b[0]);
+  $('scrub').max = len; $('hold').value = UI.hold;
+}
+function endPhase(T) { const D = Math.max(TL.len - END.at, END.out + 0.9), t = T - END.at, tap = D - END.out, ph = (((t - tap) / END.loop) % 1 + 1) % 1; return { t, D, tap, tt: Math.max(0, t - tap), ia: tw(t, 0.8, 0.45, Ease.io) * (1 - tw(t, tap - 0.3, 0.3, Ease.io)), A: ph * TAU }; }
+
+// ════ SOUND: nature, object, machine and motion sounds synthesised with Web Audio (no files, no music) ════
+const AUDIO = { ctx: null };
+function ensureAudio() {
+  try {
+    if (!AUDIO.ctx) {
+      const ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }), vol = ac.createGain(), comp = ac.createDynamicsCompressor(), mon = ac.createGain(), rec = ac.createMediaStreamDestination();
+      vol.gain.value = UI.vol; comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2; mon.gain.value = UI.hear ? 1 : 0;
+      vol.connect(comp); comp.connect(mon); mon.connect(ac.destination); comp.connect(rec); Object.assign(AUDIO, { ctx: ac, vol, mon, rec, session: null });
+    }
+    if (AUDIO.ctx.state !== 'running') return AUDIO.ctx.resume().catch(() => {});
+  } catch (e) { console.warn('Audio unavailable', e); }
+  return Promise.resolve();
+}
+function newSession() { endSession(); if (!AUDIO.ctx) return; const g = AUDIO.ctx.createGain(); g.connect(AUDIO.vol); AUDIO.session = g; }
+function endSession() { const g = AUDIO.session; if (!g) return; AUDIO.session = null; g.gain.setTargetAtTime(0, AUDIO.ctx.currentTime, 0.015); setTimeout(() => g.disconnect(), 250); }
+const envGain = (ac, out, t, a, r, peak) => { const g = ac.createGain(), p = Math.max(1e-4, peak); g.gain.setValueAtTime(1e-4, t); g.gain.exponentialRampToValueAtTime(p, t + a); g.gain.exponentialRampToValueAtTime(1e-4, t + a + r); g.connect(out); return g; };
+const osc = (ac, type, f, t, dur) => { const o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(t + dur + 0.05); return o; };
+const filt = (ac, type, f, q = 0.7) => { const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+/*@@shared:sound-library@@*/
+/** SFX library: NATURE, everyday, object, screen, people and animal sounds, all synthesized (approximations are fine).
+ *  Nature and tactile: wind, rain, water, leaves, fire, cloth, paper, wood, footsteps. Everyday: whoosh, riser, impact, boom,
+ *  pop, click, shutter, tick, ding, bell, ping, chime, buzz, glitch, sparkle, clink, coin, knock, heartbeat, pour, sizzle,
+ *  scribble, bird and birds, crickets, crowd, city, hum. No music. Add your own with the same helpers:
+ *  SFX.name = (ac, out, t, o) => { ... } (and BEDS.add('name') for a background sound).
+ *  Cue options (all optional): vol (x), pitch (x), dur (s), pan (-1..1), seed.
+ *    beds (long ambience): fadeIn, fadeOut (s), to (end volume x, a slow drift), lp (muffle: [[s into the cue, Hz], ...], e.g.
+ *      [[1.6, 9000], [2.2, 700]] closes the sound behind glass; reverse the numbers to open a window)
+ *    gust, whoosh: down.   step: surface ('grass' 'earth' 'gravel' 'sand' 'wood' 'stone' 'snow').   rustle: density.
+ *    drips, typing, ticking, heartbeat, sparkle: rate.   buzz, knock, bird: n. */
+const VERB = new WeakMap(), NZ = new WeakMap();
+function send(ac, out, amt) {                       // dark outdoor reverb send, one shared tail per output bus
+  let c = VERB.get(out);
+  if (!c) {
+    const sr = ac.sampleRate, len = Math.floor(sr * 2.4), ir = ac.createBuffer(2, len, sr), r = rng(11);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch); let lp = 0;
+      for (let i = 0; i < len; i++) {              // noise that darkens as it decays (a one-pole low-pass that closes)
+        const u = i / len, k = 0.16 + 0.5 * (1 - u) * (1 - u);
+        lp += k * ((r() * 2 - 1) - lp); d[i] = lp * Math.pow(1 - u, 3) * Math.min(1, i / (sr * 0.015));
+      }
+    }
+    c = ac.createConvolver(); c.buffer = ir; const g = ac.createGain(); g.gain.value = 0.5; c.connect(g); g.connect(out); VERB.set(out, c);
+  }
+  const s = ac.createGain(); s.gain.value = amt; s.connect(c); return s;
+}
+function nbuf(ac, kind) {                           // 6 s stereo noise that loops without a click: 'white' | 'pink' | 'brown'
+  let m = NZ.get(ac); if (!m) NZ.set(ac, m = {});
+  if (m[kind]) return m[kind];
+  const sr = ac.sampleRate, n = Math.floor(sr * 6), f = Math.floor(sr * 0.25), b = ac.createBuffer(2, n - f, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const r = rng(101 + ch * 17 + kind.length * 5), raw = new Float32Array(n);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
+    for (let i = 0; i < n; i++) {
+      const w = r() * 2 - 1;
+      if (kind === 'pink') { b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852; b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898; raw[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926; }
+      else if (kind === 'brown') { last = (last + 0.02 * w) / 1.02; raw[i] = last * 3.5; }
+      else raw[i] = w * 0.6;
+    }
+    const d = b.getChannelData(ch);
+    for (let i = 0; i < n - f; i++) d[i] = i < f ? raw[i] * Math.sin(i / f * Math.PI / 2) + raw[n - f + i] * Math.cos(i / f * Math.PI / 2) : raw[i];
+  }
+  return m[kind] = b;
+}
+function nz(ac, kind, t, dur) { const s = ac.createBufferSource(); s.buffer = nbuf(ac, kind); s.loop = true; s.start(t, Math.random() * 4); s.stop(t + dur + 0.05); return s; }
+function bus(ac, out, o) { if (!o.pan) return out; const p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan)); p.connect(out); return p; }
+function lfo(ac, t, d, hz, depth, param) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = hz; g.gain.value = depth; o.connect(g); g.connect(param); o.start(t); o.stop(t + d + 0.05); return o; }
+function bellEnv(ac, dst, t, d, peak, skew = 0.5) {    // smooth bell-shaped swell: 0 -> peak (at skew*d) -> 0
+  const g = ac.createGain(), n = 48, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const u = i / (n - 1), x = u < skew ? u / skew : (1 - u) / (1 - skew); c[i] = peak * Math.pow(Math.sin(x * Math.PI / 2), 2); }
+  g.gain.value = 0; g.gain.setValueCurveAtTime(c, t, d); g.connect(dst); return g;
+}
+function bedGain(ac, dst, t, d, o, base) {           // fade in, hold (with an optional slow drift to o.to), fade out
+  const v0 = Math.max(1e-4, base * (o.vol ?? 1)), v1 = Math.max(1e-4, base * (o.to ?? o.vol ?? 1)), g = ac.createGain();
+  const fi = Math.min(o.fadeIn ?? 1.5, d * 0.45), fo = Math.min(o.fadeOut ?? 2, d * 0.45), at = x => v0 + (v1 - v0) * x / d;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(at(fi), t + fi);       // straight-line fades so overlapping beds cross-fade smoothly
+  g.gain.linearRampToValueAtTime(at(d - fo), t + d - fo); g.gain.linearRampToValueAtTime(0, t + d);
+  let to = dst;
+  if (o.lp && o.lp.length) {                         // muffle / open: a low-pass that moves through keyframes [s into the cue, Hz]
+    const f = filt(ac, 'lowpass', o.lp[0][1], 0.6); f.connect(dst); to = f;
+    o.lp.forEach(([s, hz], i) => { const tt = t + Math.max(0, s); if (i) f.frequency.exponentialRampToValueAtTime(hz, tt); else f.frequency.setValueAtTime(hz, tt); });
+  }
+  g.connect(to); return g;
+}
+function grains(ac, gain, t, d, rate, amp, len, r, onGrain) {   // sparse random bursts on one gain node (leaves, rain, embers, gravel)
+  let ti = t + r() * 0.5 / rate;
+  while (ti < t + d - 0.03) {
+    const u = (ti - t) / d, L = len * (0.6 + 0.8 * r()), a = amp(u) * (0.35 + 0.65 * r());
+    if (onGrain) onGrain(ti, r);
+    gain.gain.setValueAtTime(0, ti); gain.gain.linearRampToValueAtTime(a, ti + 0.004);
+    gain.gain.exponentialRampToValueAtTime(1e-4, ti + 0.004 + L); gain.gain.setValueAtTime(0, ti + 0.005 + L);
+    ti += Math.max(L + 0.012, (0.4 + 1.2 * r()) / rate);
+  }
+}
+const BEDS = new Set(['wind', 'rain', 'stream', 'waves', 'fire', 'leaves', 'room', 'birds', 'crickets', 'crowd', 'city', 'hum']);
+function bedCatchUp(c, t0) {                         // after a seek, a bed that started earlier carries on from where it would be
+  if (!BEDS.has(c.type)) return null;
+  const d = c.dur || 6, el = t0 - c.time; if (el <= 0.05 || el >= d - 0.4) return null;
+  const v0 = c.vol ?? 1, v1 = c.to ?? v0;
+  return { ...c, time: t0, dur: d - el, vol: v0 + (v1 - v0) * el / d, to: v1, fadeIn: 0.5, lp: c.lp && c.lp.map(([s, hz]) => [s - el, hz]) };
+}
+
+const SFX = {
+  // ── Air: wind, breath, gusts ──
+  wind(ac, out, t, o) {                              // bed: a soft breeze with slow gusts
+    const d = o.dur || 6, p = o.pitch || 1, r = rng(o.seed || 3), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.54);
+    const gust = ac.createGain(); gust.gain.value = 0.7; gust.connect(g);
+    lfo(ac, t, d, 0.11 + r() * 0.06, 0.28, gust.gain); lfo(ac, t, d, 0.29 + r() * 0.1, 0.12, gust.gain);
+    const body = filt(ac, 'bandpass', 380 * p, 0.55); lfo(ac, t, d, 0.17 + r() * 0.05, 140 * p, body.frequency);
+    nz(ac, 'pink', t, d).connect(body).connect(gust);
+    const air = filt(ac, 'bandpass', 1500 * p, 0.8), ag = ac.createGain(); ag.gain.value = 0.28; lfo(ac, t, d, 0.23 + r() * 0.05, 420 * p, air.frequency);
+    nz(ac, 'pink', t, d).connect(air).connect(ag).connect(gust);
+  },
+  gust(ac, out, t, o) {                              // one pass of wind: use it for camera moves and big arrivals
+    const d = o.dur || 1.6, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), [a, b] = o.down ? [950, 260] : [260, 950];
+    const f = filt(ac, 'bandpass', a * p, 0.6); f.frequency.setValueAtTime(a * p, t); f.frequency.exponentialRampToValueAtTime(b * p, t + d);
+    const env = bellEnv(ac, dst, t, d, 0.5 * v, 0.45); env.connect(send(ac, out, 0.18));
+    nz(ac, 'pink', t, d).connect(f).connect(env);
+    nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', 2300 * p, 0.7)).connect(bellEnv(ac, dst, t + d * 0.1, d * 0.8, 0.11 * v, 0.5));
+  },
+  breeze(ac, out, t, o) { SFX.gust(ac, out, t, { ...o, dur: o.dur || 0.9, vol: (o.vol ?? 1) * 0.7, pitch: (o.pitch || 1) * 1.25 }); },
+  swell(ac, out, t, o) {                             // wind that builds and lifts; time it so t + dur lands on the reveal
+    const d = o.dur || 1.4, v = o.vol ?? 1, f = filt(ac, 'bandpass', 200, 0.6);
+    f.frequency.setValueAtTime(200, t); f.frequency.exponentialRampToValueAtTime(1500, t + d);
+    const env = bellEnv(ac, bus(ac, out, o), t, d + 0.35, 0.55 * v, d / (d + 0.35)); env.connect(send(ac, out, 0.25));
+    nz(ac, 'pink', t, d + 0.4).connect(f).connect(env);
+  },
+  // ── Leaves, grass, steps ──
+  rustle(ac, out, t, o) {                            // leaves / foliage / dry grass: a soft scatter of tiny rustles
+    const d = o.dur || 0.9, v = o.vol ?? 1, p = o.pitch || 1, r = rng(o.seed || Math.floor(t * 997) + 1), dst = bus(ac, out, o);
+    const f = filt(ac, 'bandpass', 3500 * p, 0.9), g = ac.createGain(); g.gain.value = 0;
+    nz(ac, 'white', t, d).connect(f).connect(filt(ac, 'lowpass', 6000)).connect(g); g.connect(dst); g.connect(send(ac, out, 0.2));
+    grains(ac, g, t, d, o.density || 22, u => v * 0.4 * Math.pow(Math.sin(Math.PI * Math.min(1, u)), 0.7), 0.035, r, ti => f.frequency.setValueAtTime((2300 + r() * 3000) * p, ti));
+  },
+  leaves(ac, out, t, o) {                            // bed: wind moving through a canopy
+    const d = o.dur || 6, p = o.pitch || 1, r = rng(o.seed || 8), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.5);
+    const hush = ac.createGain(); hush.gain.value = 0.5; hush.connect(g); lfo(ac, t, d, 0.2 + r() * 0.08, 0.3, hush.gain);
+    nz(ac, 'pink', t, d).connect(filt(ac, 'highpass', 1800 * p)).connect(filt(ac, 'lowpass', 5200)).connect(hush);
+    const gr = ac.createGain(); gr.gain.value = 0; const f = filt(ac, 'bandpass', 3500 * p, 0.9); nz(ac, 'white', t, d).connect(f).connect(gr); gr.connect(g);
+    grains(ac, gr, t, d, 9, () => 0.35, 0.04, r, ti => f.frequency.setValueAtTime((2300 + r() * 3000) * p, ti));
+  },
+  step(ac, out, t, o) {                              // one soft footstep
+    const v = o.vol ?? 1, r = rng(o.seed || Math.floor(t * 1013) + 7), p = (o.pitch || 1) * (0.92 + 0.16 * r()), dst = bus(ac, out, o), sf = o.surface || 'grass', A = 0.45 * v * (0.8 + 0.2 * r());
+    const body = (lp, a, att, dec) => nz(ac, 'pink', t, dec + att).connect(filt(ac, 'lowpass', lp * p, 0.5)).connect(envGain(ac, dst, t, att, dec, a * A));
+    const thump = (f, a, dec) => { const s = osc(ac, 'sine', f * p, t, dec); s.frequency.exponentialRampToValueAtTime(f * p * 0.55, t + dec * 0.8); s.connect(envGain(ac, dst, t, 0.004, dec, a * A)); };
+    const crunch = (rate, span, f, a) => { const gg = ac.createGain(); gg.gain.value = 0; gg.connect(dst); nz(ac, 'white', t, span + 0.1).connect(filt(ac, 'bandpass', f * p, 1.1)).connect(gg); grains(ac, gg, t, span, rate, () => a * A, 0.012, r); };
+    if (sf === 'earth') { body(900, 0.4, 0.006, 0.09); thump(95, 0.3, 0.1); crunch(60, 0.1, 2600, 0.05); }
+    else if (sf === 'gravel') { body(1200, 0.2, 0.005, 0.08); crunch(90, 0.12, 3000, 0.13); thump(110, 0.15, 0.07); }
+    else if (sf === 'sand') { body(1000, 0.35, 0.02, 0.16); thump(80, 0.12, 0.1); }
+    else if (sf === 'wood') { thump(150, 0.5, 0.14); body(900, 0.12, 0.003, 0.03); const s = osc(ac, 'sine', 320 * p, t, 0.12); s.connect(envGain(ac, dst, t, 0.003, 0.1, 0.07 * A)); }
+    else if (sf === 'stone') { body(2000, 0.25, 0.003, 0.05); thump(120, 0.25, 0.08); crunch(60, 0.04, 2500, 0.07); }
+    else if (sf === 'snow') { crunch(110, 0.14, 2200, 0.14); body(700, 0.2, 0.02, 0.12); }
+    else { body(650, 0.42, 0.008, 0.11); thump(88, 0.32, 0.12); crunch(140, 0.12, 3200, 0.035); }   // grass
+  },
+  thump(ac, out, t, o) {                             // soft earth thump: a landing, a heavy step, a fruit falling
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), s = osc(ac, 'sine', 105 * p, t, 0.3);
+    s.frequency.exponentialRampToValueAtTime(48 * p, t + 0.22);
+    const g = envGain(ac, dst, t, 0.006, 0.3, 0.2 * v); g.connect(send(ac, out, 0.2)); s.connect(g);
+    nz(ac, 'pink', t, 0.2).connect(filt(ac, 'lowpass', 260 * p)).connect(envGain(ac, dst, t, 0.004, 0.12, 0.13 * v));
+  },
+  // ── Water ──
+  drop(ac, out, t, o) {                              // a dewdrop falling into still water, with a faint ripple echo
+    const v = o.vol ?? 1, r = rng(o.seed || Math.floor(t * 911) + 3), p = (o.pitch || 1) * (0.94 + 0.12 * r()), dst = bus(ac, out, o), wet = send(ac, out, 0.9);
+    [[0, 1, 1], [0.15 + 0.04 * r(), 0.2, 1.06]].forEach(([dt, a, k]) => {
+      const f = 760 * p * k, tt = t + dt, s = osc(ac, 'sine', f * 0.9, tt, 0.3), s2 = osc(ac, 'sine', f * 2.1, tt, 0.12);
+      s.frequency.exponentialRampToValueAtTime(f * 1.12, tt + 0.05);
+      const g = envGain(ac, dst, tt, 0.004, 0.16, 0.15 * a * v); g.connect(wet); s.connect(g);
+      s2.connect(envGain(ac, dst, tt, 0.003, 0.05, 0.025 * a * v));
+    });
+    nz(ac, 'white', t, 0.03).connect(filt(ac, 'lowpass', 1600)).connect(envGain(ac, dst, t, 0.002, 0.02, 0.02 * v));
+  },
+  drips(ac, out, t, o) {                             // slow water drips, for counting or a quiet passage
+    const rate = o.rate || 2, n = Math.max(1, Math.round((o.dur || 2) * rate)), r = rng(o.seed || 5);
+    for (let i = 0; i < n; i++) SFX.drop(ac, out, t + i / rate + r() * 0.12, { vol: o.vol, pitch: (o.pitch || 1) * (0.8 + 0.5 * r()), pan: o.pan, seed: i + 1 });
+  },
+  splash(ac, out, t, o) {                            // a soft splash with a few settling drops
+    const v = o.vol ?? 1, d = 0.5, r = rng(o.seed || 4), f = filt(ac, 'lowpass', 3200, 0.6);
+    f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(450, t + d);
+    const env = bellEnv(ac, bus(ac, out, o), t, d, 0.26 * v, 0.12); env.connect(send(ac, out, 0.4)); nz(ac, 'white', t, d).connect(f).connect(env);
+    [0.1, 0.19, 0.3].forEach((dt, i) => SFX.drop(ac, out, t + dt, { vol: 0.5 * v, pitch: 1.1 + r() * 0.5, pan: o.pan, seed: 40 + i }));
+  },
+  stream(ac, out, t, o) {                            // bed: a small brook
+    const d = o.dur || 8, r = rng(o.seed || 5), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.18);
+    nz(ac, 'pink', t, d).connect(filt(ac, 'lowpass', 900)).connect(ac.createGain()).connect(g);
+    [[1050, 3.2, 0.5, [[2.3, 330], [5.1, 240], [8.7, 140]]], [1900, 4, 0.3, [[3.1, 500], [6.3, 300], [11.3, 160]]]].forEach(([f0, q, a, mods]) => {
+      const bp = filt(ac, 'bandpass', f0, q), ga = ac.createGain(); ga.gain.value = a;
+      mods.forEach(([hz, dep]) => lfo(ac, t, d, hz * (0.9 + 0.2 * r()), dep, bp.frequency));
+      nz(ac, 'white', t, d).connect(bp).connect(ga).connect(g);
+    });
+    const hiss = ac.createGain(); hiss.gain.value = 0.07; lfo(ac, t, d, 0.4, 0.03, hiss.gain);
+    nz(ac, 'white', t, d).connect(filt(ac, 'highpass', 3200)).connect(filt(ac, 'lowpass', 6000)).connect(hiss).connect(g);
+  },
+  rain(ac, out, t, o) {                              // bed: soft rain on leaves
+    const d = o.dur || 8, r = rng(o.seed || 6), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.24);
+    const sheet = ac.createGain(); sheet.gain.value = 0.5; lfo(ac, t, d, 0.17, 0.12, sheet.gain);
+    nz(ac, 'white', t, d).connect(filt(ac, 'highpass', 900)).connect(filt(ac, 'lowpass', 5200)).connect(sheet).connect(g);
+    const body = ac.createGain(); body.gain.value = 0.35; nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', 520, 0.6)).connect(body).connect(g);
+    const pg = ac.createGain(); pg.gain.value = 0; const f = filt(ac, 'bandpass', 3600, 1); nz(ac, 'white', t, d).connect(f).connect(pg); pg.connect(g);
+    grains(ac, pg, t, d, 38, () => 0.35, 0.012, r, ti => f.frequency.setValueAtTime(2400 + r() * 2800, ti));
+  },
+  waves(ac, out, t, o) {                             // bed: slow waves on a shore
+    const d = o.dur || 10, r = rng(o.seed || 7), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.24), hz = 0.1 + r() * 0.03;
+    const swell = ac.createGain(); swell.gain.value = 0.5; swell.connect(g); lfo(ac, t, d, hz, 0.45, swell.gain);
+    const lp = filt(ac, 'lowpass', 650); lfo(ac, t, d, hz, 450, lp.frequency); nz(ac, 'pink', t, d).connect(lp).connect(swell);
+    const foam = ac.createGain(); foam.gain.value = 0.16; foam.connect(swell); nz(ac, 'white', t, d).connect(filt(ac, 'highpass', 2200)).connect(filt(ac, 'lowpass', 5800)).connect(foam);
+  },
+  fire(ac, out, t, o) {                              // bed: a quiet fire, a low roar with small crackles
+    const d = o.dur || 8, r = rng(o.seed || 10), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.33);
+    const roar = ac.createGain(); roar.gain.value = 0.5; lfo(ac, t, d, 0.7, 0.1, roar.gain); nz(ac, 'brown', t, d).connect(filt(ac, 'lowpass', 450)).connect(roar).connect(g);
+    const cg = ac.createGain(); cg.gain.value = 0; const f = filt(ac, 'bandpass', 2400, 1); nz(ac, 'white', t, d).connect(f).connect(cg); cg.connect(g);
+    grains(ac, cg, t, d, 7, () => 0.7, 0.008, r, ti => f.frequency.setValueAtTime(1200 + r() * 3200, ti));
+  },
+  thunder(ac, out, t, o) {                           // distant rolling thunder: low, slow, never sharp
+    const d = o.dur || 3.6, v = o.vol ?? 1, dst = bus(ac, out, o), f = filt(ac, 'lowpass', 200);
+    f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(90, t + d);
+    const env = bellEnv(ac, dst, t, d, 0.44 * v, 0.2); env.connect(send(ac, out, 0.3)); lfo(ac, t, d, 3.1, 0.07 * v, env.gain);
+    nz(ac, 'brown', t, d).connect(f).connect(env);
+    nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', 300, 0.5)).connect(bellEnv(ac, dst, t, d, 0.11 * v, 0.18));   // body that small speakers can play
+  },
+  room(ac, out, t, o) {                              // bed: a quiet room, near silence with a little air (indoors, and the hush before a key line)
+    const d = o.dur || 6, g = bedGain(ac, bus(ac, out, o), t, d, o, 0.06);
+    nz(ac, 'brown', t, d).connect(filt(ac, 'lowpass', 320)).connect(g);
+    const air = ac.createGain(); air.gain.value = 0.1; nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', 700, 0.5)).connect(air).connect(g);
+  },
+  // ── Cloth and paper ──
+  cloth(ac, out, t, o) {                             // fabric moving: a bag swung off a shoulder, a sleeve, a curtain drawn
+    const d = o.dur || 0.45, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), r = rng(o.seed || Math.floor(t * 577) + 9);
+    const f = filt(ac, 'bandpass', 800 * p, 0.7); f.frequency.setValueAtTime(650 * p, t); f.frequency.exponentialRampToValueAtTime(1500 * p, t + d * 0.5); f.frequency.exponentialRampToValueAtTime(850 * p, t + d);
+    nz(ac, 'pink', t, d).connect(f).connect(bellEnv(ac, dst, t, d, 0.42 * v, 0.4));
+    const g = ac.createGain(); g.gain.value = 0; g.connect(dst); const f2 = filt(ac, 'bandpass', 2400 * p, 1.1);
+    nz(ac, 'white', t, d).connect(f2).connect(filt(ac, 'lowpass', 4800)).connect(g);
+    grains(ac, g, t, d, 28, u => 0.1 * v * Math.sin(Math.PI * Math.min(1, u)), 0.02, r);
+  },
+  flap(ac, out, t, o) {                              // a curtain or a flag flapping in the wind: irregular soft cloth snaps (pair it with a gust)
+    const d = o.dur || 1.5, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), r = rng(o.seed || 21);
+    const g = ac.createGain(); g.gain.value = 0; g.connect(dst); g.connect(send(ac, out, 0.15));
+    const f = filt(ac, 'bandpass', 1000 * p, 0.8); nz(ac, 'pink', t, d + 0.1).connect(f).connect(g);
+    let ti = t + 0.04;
+    while (ti < t + d - 0.08) {
+      const u = (ti - t) / d, a = 0.55 * v * Math.pow(Math.sin(Math.PI * u), 0.6) * (0.45 + 0.55 * r()), L = 0.05 + 0.08 * r();
+      f.frequency.setValueAtTime((750 + 800 * r()) * p, ti);
+      g.gain.setValueAtTime(0.0001, ti); g.gain.linearRampToValueAtTime(a, ti + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, ti + 0.012 + L);
+      ti += Math.max(L + 0.03, 0.1 + 0.18 * r());
+    }
+  },
+  crease(ac, out, t, o) {                            // one paper crease while folding: a short, dry crackle (use 2 or 3 for a fold)
+    const v = o.vol ?? 1, d = o.dur || 0.12, dst = bus(ac, out, o), r = rng(o.seed || Math.floor(t * 431) + 5);
+    const g = ac.createGain(); g.gain.value = 0; g.connect(dst); const f = filt(ac, 'bandpass', 2200, 0.9);
+    nz(ac, 'white', t, d + 0.05).connect(f).connect(filt(ac, 'lowpass', 5000)).connect(g);
+    grains(ac, g, t, d, 70, () => 0.42 * v, 0.006, r, ti => f.frequency.setValueAtTime(1400 + r() * 2200, ti));
+    nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', 900, 0.8)).connect(bellEnv(ac, dst, t, d, 0.22 * v, 0.3));
+  },
+  flutter(ac, out, t, o) {                           // paper fluttering through the air: a paper plane, a page blown away
+    const d = o.dur || 0.9, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o);
+    const f = filt(ac, 'bandpass', 1100 * p, 0.9); f.frequency.setValueAtTime(900 * p, t); f.frequency.exponentialRampToValueAtTime(1500 * p, t + d);
+    const am = ac.createGain(); am.gain.value = 0.55; lfo(ac, t, d, 19, 0.45, am.gain);
+    nz(ac, 'pink', t, d).connect(f).connect(am).connect(bellEnv(ac, dst, t, d, 0.42 * v, 0.35));
+  },
+  // ── Small touches ──
+  pebble(ac, out, t, o) {                            // a small stone tapped on stone
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), s = osc(ac, 'sine', 1150 * p, t, 0.08);
+    s.frequency.exponentialRampToValueAtTime(760 * p, t + 0.03); const g = envGain(ac, dst, t, 0.001, 0.035, 0.2 * v); g.connect(send(ac, out, 0.15)); s.connect(g);
+    nz(ac, 'white', t, 0.03).connect(filt(ac, 'bandpass', 2100 * p, 1.2)).connect(filt(ac, 'lowpass', 4500)).connect(envGain(ac, dst, t, 0.001, 0.014, 0.14 * v));
+  },
+  wood(ac, out, t, o) {                              // a hollow wooden knock (bamboo, a branch, a door)
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), wet = send(ac, out, 0.25);
+    [[1, 0.16, 0.13], [1.62, 0.056, 0.07], [2.7, 0.02, 0.04]].forEach(([m, a, dec]) => { const g = envGain(ac, dst, t, 0.002, dec, a * v); g.connect(wet); osc(ac, 'sine', 400 * p * m, t, dec).connect(g); });
+    nz(ac, 'white', t, 0.02).connect(filt(ac, 'bandpass', 800, 0.8)).connect(envGain(ac, dst, t, 0.001, 0.012, 0.05 * v));
+  },
+  twig(ac, out, t, o) {                              // a dry twig giving way: two small soft cracks
+    const v = o.vol ?? 1, dst = bus(ac, out, o), wet = send(ac, out, 0.2);
+    [0, 0.028].forEach((dt, i) => { const g = envGain(ac, dst, t + dt, 0.001, 0.02, 0.56 * v * (i ? 0.6 : 1)); g.connect(wet); nz(ac, 'white', t + dt, 0.04).connect(filt(ac, 'bandpass', 1500 + i * 500, 1)).connect(filt(ac, 'lowpass', 4500)).connect(g); });
+  },
+  paper(ac, out, t, o) {                             // a page turning
+    const v = o.vol ?? 1, d = o.dur || 0.34, f = filt(ac, 'bandpass', 1800, 0.8);
+    f.frequency.setValueAtTime(1800, t); f.frequency.exponentialRampToValueAtTime(700, t + d);
+    nz(ac, 'pink', t, d).connect(f).connect(bellEnv(ac, bus(ac, out, o), t, d, 0.4 * v, 0.3));
+  },
+  type(ac, out, t, o) {                              // one soft wooden key
+    const v = o.vol ?? 1, dst = bus(ac, out, o), s = osc(ac, 'sine', 190, t, 0.04); s.connect(envGain(ac, dst, t, 0.002, 0.03, 0.15 * v));
+    nz(ac, 'pink', t, 0.03).connect(filt(ac, 'lowpass', 700)).connect(envGain(ac, dst, t, 0.002, 0.02, 0.18 * v));
+  },
+  typing(ac, out, t, o) { const rate = o.rate || 9, n = Math.round((o.dur || 1) * rate), r = rng(o.seed || 5); for (let i = 0; i < n; i++) SFX.type(ac, out, t + i / rate + r() * 0.04, { vol: (o.vol ?? 1) * (0.7 + 0.3 * r()), pan: o.pan }); },
+  // ── Everyday, objects, screens, people and animals (approximations: close to the picture is enough) ──
+  whoosh(ac, out, t, o) {                            // air rushing past: something flies by, a fast move (down: falling)
+    const d = o.dur || 0.5, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), f = filt(ac, 'bandpass', 1, 1.1), [a, b] = o.down ? [2800, 260] : [260, 2800];
+    f.frequency.setValueAtTime(a * p, t); f.frequency.exponentialRampToValueAtTime(b * p, t + d);
+    const g = bellEnv(ac, dst, t, d, 0.7 * v, 0.6); g.connect(send(ac, out, 0.3)); nz(ac, 'pink', t, d).connect(f).connect(g);
+  },
+  riser(ac, out, t, o) {                             // tension building to a reveal; time it so t + dur lands on it
+    const d = o.dur || 1.6, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), f = filt(ac, 'bandpass', 300 * p, 1.4), s = osc(ac, 'sine', 180 * p, t, d);
+    f.frequency.exponentialRampToValueAtTime(3200 * p, t + d); s.frequency.exponentialRampToValueAtTime(520 * p, t + d);
+    const g = bellEnv(ac, dst, t, d, 0.6 * v, 0.92); g.connect(send(ac, out, 0.4)); nz(ac, 'pink', t, d).connect(f).connect(g); s.connect(bellEnv(ac, dst, t, d, 0.05 * v, 0.92));
+  },
+  impact(ac, out, t, o) {                            // a weighty hit: a hard landing, a slam, a reveal
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), s = osc(ac, 'sine', 90 * p, t, 0.6); s.frequency.exponentialRampToValueAtTime(38 * p, t + 0.4);
+    const g = envGain(ac, dst, t, 0.003, 0.55, 0.24 * v); g.connect(send(ac, out, 0.35)); s.connect(g);
+    nz(ac, 'pink', t, 0.25).connect(filt(ac, 'lowpass', 1400 * p)).connect(envGain(ac, dst, t, 0.002, 0.18, 0.18 * v));
+  },
+  boom(ac, out, t, o) {                              // a deep boom: close thunder, a cannon, a huge reveal
+    const v = o.vol ?? 1, d = o.dur || 2.4, dst = bus(ac, out, o), s = osc(ac, 'sine', 62 * (o.pitch || 1), t, d); s.frequency.exponentialRampToValueAtTime(30, t + d);
+    const g = envGain(ac, dst, t, 0.01, d, 0.36 * v); g.connect(send(ac, out, 0.5)); s.connect(g);
+    nz(ac, 'brown', t, d).connect(filt(ac, 'lowpass', 220)).connect(envGain(ac, dst, t, 0.02, d * 0.8, 0.4 * v));
+  },
+  pop(ac, out, t, o) {                               // a cork, a bubble, something popping into view
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), s = osc(ac, 'sine', 880 * p, t, 0.1); s.frequency.exponentialRampToValueAtTime(240 * p, t + 0.07);
+    s.connect(envGain(ac, dst, t, 0.002, 0.07, 0.15 * v)); nz(ac, 'white', t, 0.02).connect(filt(ac, 'bandpass', 1800 * p, 1)).connect(envGain(ac, dst, t, 0.001, 0.01, 0.08 * v));
+  },
+  click(ac, out, t, o) {                             // a button, a switch, a mouse, a pen
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o);
+    nz(ac, 'white', t, 0.02).connect(filt(ac, 'highpass', 1800 * p)).connect(envGain(ac, dst, t, 0.0005, 0.008, 0.22 * v));
+    osc(ac, 'triangle', 2400 * p, t, 0.02).connect(envGain(ac, dst, t, 0.0005, 0.012, 0.06 * v));
+  },
+  shutter(ac, out, t, o) {                           // a camera taking a photo
+    SFX.click(ac, out, t, o); SFX.click(ac, out, t + 0.07, { ...o, pitch: (o.pitch || 1) * 0.8 });
+    nz(ac, 'white', t + 0.01, 0.06).connect(filt(ac, 'bandpass', 2500, 0.8)).connect(envGain(ac, bus(ac, out, o), t + 0.01, 0.005, 0.05, 0.12 * (o.vol ?? 1)));
+  },
+  tick(ac, out, t, o) {                              // one clock tick (pitch under 1: the tock)
+    const v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o);
+    nz(ac, 'white', t, 0.02).connect(filt(ac, 'bandpass', 3200 * p, 2)).connect(envGain(ac, dst, t, 0.0005, 0.012, 0.3 * v));
+    osc(ac, 'sine', 1900 * p, t, 0.03).connect(envGain(ac, dst, t, 0.0005, 0.02, 0.07 * v));
+  },
+  ticking(ac, out, t, o) { const rate = o.rate || 1, n = Math.max(1, Math.round((o.dur || 3) * rate)); for (let i = 0; i < n; i++) SFX.tick(ac, out, t + i / rate, { ...o, pitch: (o.pitch || 1) * (i % 2 ? 0.82 : 1) }); },
+  ding(ac, out, t, o) {                              // a small bell: a notification, a shop door, an idea
+    const v = o.vol ?? 1, f = 1040 * (o.pitch || 1), d = o.dur || 1.4, dst = bus(ac, out, o), wet = send(ac, out, 0.4);
+    [[1, 0.12, 1], [2.76, 0.04, 0.45], [5.4, 0.015, 0.25]].forEach(([m, a, k]) => { const g = envGain(ac, dst, t, 0.002, d * k, a * v); g.connect(wet); osc(ac, 'sine', f * m, t, d * k).connect(g); });
+  },
+  bell(ac, out, t, o) { SFX.ding(ac, out, t, { ...o, dur: o.dur || 2.6, pitch: (o.pitch || 1) * 0.55 }); },          // a larger bell, a school bell
+  ping(ac, out, t, o) { SFX.ding(ac, out, t, { ...o, dur: o.dur || 0.5, pitch: (o.pitch || 1) * 1.35 }); },          // a short screen ping
+  chime(ac, out, t, o) { SFX.ding(ac, out, t, { ...o, dur: o.dur || 0.9 }); SFX.ding(ac, out, t + 0.13, { ...o, dur: o.dur || 1.2, pitch: (o.pitch || 1) * 1.5 }); },   // two notes: a message, success
+  buzz(ac, out, t, o) {                              // a phone vibrating on a table (dur: one buzz; n: how many)
+    const v = o.vol ?? 1, d = o.dur || 0.4, dst = bus(ac, out, o);
+    for (let i = 0; i < (o.n || 2); i++) {
+      const tt = t + i * (d + 0.18), g = ac.createGain(); g.connect(dst);
+      g.gain.setValueAtTime(0, tt); g.gain.linearRampToValueAtTime(0.1 * v, tt + 0.02); g.gain.setValueAtTime(0.1 * v, tt + d - 0.03); g.gain.linearRampToValueAtTime(0, tt + d);
+      osc(ac, 'sawtooth', 150 * (o.pitch || 1), tt, d).connect(filt(ac, 'lowpass', 600)).connect(g);
+    }
+  },
+  glitch(ac, out, t, o) {                            // a screen glitching: stuttering digital bursts
+    const v = o.vol ?? 1, d = o.dur || 0.4, r = rng(o.seed || 17), dst = bus(ac, out, o);
+    for (let tt = t; tt < t + d; tt += 0.025 + r() * 0.05) { const L = 0.01 + r() * 0.03; nz(ac, 'white', tt, L).connect(filt(ac, 'bandpass', 400 + r() * 3000, 2)).connect(envGain(ac, dst, tt, 0.001, L, 0.4 * v * (0.3 + 0.7 * r()))); }
+  },
+  sparkle(ac, out, t, o) {                           // glints and twinkles: magic, something clean or new, stars, an idea
+    const v = o.vol ?? 1, d = o.dur || 1, r = rng(o.seed || 7), dst = bus(ac, out, o), wet = send(ac, out, 0.6);
+    for (let i = 0, n = Math.round(d * (o.rate || 14)); i < n; i++) { const tt = t + r() * d, f = (2200 + r() * 3200) * (o.pitch || 1), g = envGain(ac, dst, tt, 0.002, 0.12 + r() * 0.2, 0.05 * v * (0.4 + r())); g.connect(wet); osc(ac, 'sine', f, tt, 0.35).connect(g); }
+  },
+  shimmer(ac, out, t, o) { SFX.sparkle(ac, out, t, { ...o, rate: o.rate || 24, dur: o.dur || 1.4 }); },
+  clink(ac, out, t, o) {                             // glass or china touching, a spoon in a cup
+    const v = o.vol ?? 1, f = 2300 * (o.pitch || 1), dst = bus(ac, out, o), wet = send(ac, out, 0.3);
+    [[1, 0.1, 0.5], [2.32, 0.05, 0.3], [3.9, 0.03, 0.2]].forEach(([m, a, dec]) => { const g = envGain(ac, dst, t, 0.001, dec, a * v); g.connect(wet); osc(ac, 'sine', f * m, t, dec).connect(g); });
+  },
+  coin(ac, out, t, o) { const p = (o.pitch || 1) * 1.3; SFX.clink(ac, out, t, { ...o, pitch: p }); SFX.clink(ac, out, t + 0.11, { ...o, vol: (o.vol ?? 1) * 0.5, pitch: p }); },   // coins dropping
+  knock(ac, out, t, o) { for (let i = 0; i < (o.n || 3); i++) SFX.wood(ac, out, t + i * 0.16, { ...o, pitch: (o.pitch || 1) * 0.5, vol: (o.vol ?? 1) * 1.3 }); },   // knocks on a door
+  heartbeat(ac, out, t, o) {                         // lub-dub, rate beats a second (life, fear, waiting)
+    const rate = o.rate || 1.2, n = Math.max(1, Math.round((o.dur || 3) * rate));
+    for (let i = 0; i < n; i++) [[0, 1], [0.28, 0.7]].forEach(([dt, a]) => SFX.thump(ac, out, t + i / rate + dt, { vol: (o.vol ?? 1) * a, pitch: 0.75 * (o.pitch || 1), pan: o.pan }));
+  },
+  pour(ac, out, t, o) {                              // liquid poured into a cup or glass (rising as it fills)
+    const d = o.dur || 1.5, v = o.vol ?? 1, p = o.pitch || 1, dst = bus(ac, out, o), f = filt(ac, 'bandpass', 500 * p, 3), g = bellEnv(ac, dst, t, d, 0.9 * v, 0.2);
+    f.frequency.exponentialRampToValueAtTime(1400 * p, t + d); lfo(ac, t, d, 9, 160 * p, f.frequency); g.connect(send(ac, out, 0.2)); nz(ac, 'white', t, d).connect(f).connect(g);
+  },
+  sizzle(ac, out, t, o) {                            // frying, steam, a hot pan
+    const d = o.dur || 2, v = o.vol ?? 1, dst = bus(ac, out, o), g = ac.createGain(); g.gain.value = 0; g.connect(dst);
+    grains(ac, g, t, d, 60, () => 0.25 * v, 0.01, rng(o.seed || 4)); nz(ac, 'white', t, d).connect(filt(ac, 'highpass', 3000)).connect(g);
+    nz(ac, 'white', t, d).connect(filt(ac, 'highpass', 4000)).connect(bellEnv(ac, dst, t, d, 0.05 * v, 0.3));
+  },
+  scribble(ac, out, t, o) {                          // a pencil or pen writing
+    const d = o.dur || 1.2, v = o.vol ?? 1, dst = bus(ac, out, o), g = ac.createGain(); g.gain.value = 0; g.connect(dst);
+    grains(ac, g, t, d, 16, () => 0.5 * v, 0.05, rng(o.seed || 8)); nz(ac, 'white', t, d).connect(filt(ac, 'bandpass', 2600 * (o.pitch || 1), 1.2)).connect(g);
+  },
+  bird(ac, out, t, o) {                              // a small bird's call: a few quick chirps
+    const v = o.vol ?? 1, p = o.pitch || 1, r = rng(o.seed || Math.floor(t * 37) + 2), dst = bus(ac, out, o), wet = send(ac, out, 0.5);
+    for (let i = 0, n = o.n || 2 + Math.floor(r() * 3); i < n; i++) {
+      const tt = t + i * (0.09 + r() * 0.05), f = (2600 + r() * 900) * p, s = osc(ac, 'sine', f, tt, 0.08);
+      s.frequency.exponentialRampToValueAtTime(f * (1.25 + r() * 0.3), tt + 0.03); s.frequency.exponentialRampToValueAtTime(f * 0.85, tt + 0.07);
+      const g = envGain(ac, dst, tt, 0.005, 0.06, 0.15 * v); g.connect(wet); s.connect(g);
+    }
+  },
+  birds(ac, out, t, o) {                             // bed: birds around a garden or a morning window
+    const d = o.dur || 6, r = rng(o.seed || 21);
+    for (let tt = t + r(); tt < t + d - 0.5; tt += 0.8 + r() * 1.8) SFX.bird(ac, out, tt, { vol: (o.vol ?? 1) * (0.4 + 0.6 * r()), pitch: (o.pitch || 1) * (0.85 + 0.3 * r()), pan: (r() - 0.5) * 1.2, seed: Math.floor(r() * 1e6) });
+  },
+  crickets(ac, out, t, o) {                          // bed: a night field
+    const d = o.dur || 6, p = o.pitch || 1, g = bedGain(ac, bus(ac, out, o), t, d, o, 0.05), a = ac.createGain(), b = ac.createGain();
+    a.gain.value = 0.5; b.gain.value = 0.5; a.connect(b); b.connect(g); lfo(ac, t, d, 27, 0.5, a.gain); lfo(ac, t, d, 1.7, 0.5, b.gain);
+    osc(ac, 'sine', 4300 * p, t, d).connect(a); osc(ac, 'sine', 4600 * p, t, d).connect(a);
+  },
+  crowd(ac, out, t, o) {                             // bed: many people talking (a market, a hall, a playground)
+    const d = o.dur || 6, r = rng(o.seed || 9), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.5);
+    for (const [fc, q, hz] of [[420, 2, 3.1], [900, 3, 4.3], [1600, 3, 5.2]]) { const a = ac.createGain(); a.gain.value = 0.5; a.connect(g); lfo(ac, t, d, hz + r(), 0.45, a.gain); nz(ac, 'pink', t, d).connect(filt(ac, 'bandpass', fc * (o.pitch || 1), q)).connect(a); }
+  },
+  city(ac, out, t, o) {                              // bed: traffic and the hum of a town, a car passing now and then
+    const d = o.dur || 6, r = rng(o.seed || 13), g = bedGain(ac, bus(ac, out, o), t, d, o, 0.2);
+    nz(ac, 'brown', t, d).connect(filt(ac, 'lowpass', 380)).connect(g);
+    for (let tt = t + 0.6 + r() * 1.5; tt < t + d - 2; tt += 2.2 + r() * 3) SFX.whoosh(ac, out, tt, { dur: 1.6 + r(), vol: (o.vol ?? 1) * 0.2, pitch: 0.35, pan: r() < 0.5 ? -0.6 : 0.6 });
+  },
+  hum(ac, out, t, o) {                               // bed: a fridge, a machine, lights, a computer
+    const d = o.dur || 6, p = o.pitch || 1, g = bedGain(ac, bus(ac, out, o), t, d, o, 0.03);
+    [[100, 1], [200, 0.5], [300, 0.2]].forEach(([f, a]) => { const k = ac.createGain(); k.gain.value = a; k.connect(g); osc(ac, 'sine', f * p, t, d).connect(k); });
+  },
+};
+/*@@end:sound-library@@*/
+function playSfx(c, at) {
+  const fn = SFX[c.type]; if (!fn) { console.warn('Unknown sound', c.type); return; }
+  let pan = c.pan; if (c.src) { const s = screenOf(typeof c.src[0] === 'string' ? AT(c.src[0], c.src[1]) : c.src, c.time); pan = s ? Math.max(-1, Math.min(1, (s[0] / W - 0.5) * 1.6)) : 0; }   // src: pans the sound from where it is on screen
+  try { fn(AUDIO.ctx, AUDIO.session, at, { ...c, pan }); } catch (e) { console.error('Sound', c.type, e); }
+}
+
+// ════ PLAYBACK: the picture follows the audio clock, so sounds land on their frames ════
+const clock = { playing: false, t: 0, t0: 0, perf0: 0 };
+let nextCue = 0, audioBase = 0, scrubbing = false, raf = 0;
+const nowT = () => clock.playing ? Math.max(clock.t0, clock.t0 + (performance.now() - clock.perf0) / 1000) : clock.t;
+async function play() {
+  $('badge').style.display = 'none'; await ensureAudio(); if (clock.t >= TL.len - 1e-3) clock.t = 0;
+  clock.t0 = clock.t; clock.perf0 = performance.now() + 50; newSession(); audioBase = AUDIO.ctx ? AUDIO.ctx.currentTime + 0.05 : 0;
+  const ts = AUDIO.ctx && AUDIO.ctx.getOutputTimestamp && AUDIO.ctx.getOutputTimestamp();
+  if (ts && ts.performanceTime > 0) { const p = ts.performanceTime + (audioBase - ts.contextTime) * 1000; if (Math.abs(p - clock.perf0) < 400) clock.perf0 = p; }
+  nextCue = TL.cues.findIndex(c => c.time >= clock.t0 - 1e-3); if (nextCue < 0) nextCue = TL.cues.length;
+  if (AUDIO.session) for (const c of TL.cues) { const b = bedCatchUp(c, clock.t0); if (b) playSfx(b, audioBase); }
+  clock.playing = true; $('play').textContent = '❚❚ Pause'; cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+}
+function stop() { if (clock.playing) clock.t = Math.min(nowT(), TL.len); clock.playing = false; endSession(); cancelAnimationFrame(raf); $('play').textContent = '▶ Play'; }
+function seek(t) { const was = clock.playing; stop(); clock.t = Math.min(Math.max(0, t), TL.len); if (was) play(); else renderAt(clock.t); }
+function frame() {
+  if (!clock.playing) return;
+  const T = nowT();
+  if (T >= TL.len) { if (REC.active) { renderAt(TL.len); finishRecording(false); } else { stop(); clock.t = 0; play(); } return; }
+  if (AUDIO.session) while (nextCue < TL.cues.length && TL.cues[nextCue].time <= T + 0.3) { const c = TL.cues[nextCue++]; if (c.time >= clock.t0 - 1e-3) playSfx(c, Math.max(AUDIO.ctx.currentTime, audioBase + (c.time - clock.t0))); }
+  renderAt(T); raf = requestAnimationFrame(frame);
+}
+function veilOf(c) {   // CAM option veil (0..1, where in the move): cloud passes the lens, and behind it the smaller level comes or goes
+  const vx = c.b.x.veil, pk = typeof vx === 'number' ? vx : 0.5; if (!vx) return { va: 0, pk, out: null };
+  return { va: 1 - sm(0.04, 0.24, Math.abs(c.k - pk)), pk, out: (c.a.s < c.b.s) === (c.k > pk) ? (c.a.s < c.b.s ? c.a : c.b).key : null };
+}
+function renderAt(T) {
+  T = Math.min(Math.max(T, 0), TL.len - 1e-4);
+  const c = camAt(T); camera.position.set(...c.p); camera.up.set(...c.u); camera.fov = c.f; camera.near = Math.max(1e-7, c.d * 0.01); camera.far = c.d * 3000; camera.updateProjectionMatrix(); camera.lookAt(...c.l); camera.updateMatrixWorld();
+  PT.begin(); if (typeof animate === 'function') animate(T); PT.end();
+  for (const d of LIVE) d.paint(T);
+  const { va, pk, out } = veilOf(c);
+  const under = (k, q) => { for (let x = k; x; x = lv(x).par) if (x === q) return true; return false; };
+  for (const key in GROUPS) { const L = lv(key); GROUPS[key].visible = !L.e.hide && (L.e.always || !(out && under(key, out))) && (L.e.always || L.r * L.s / Math.max(1e-12, Math.hypot(...sub3(c.p, L.o))) > L.vis); }   // every place in view, none too small to see; behind a veil the smaller place comes or goes
+  for (const m of BILL) { m.getWorldPosition(V3); const py = m.parent ? EW.setFromQuaternion(m.parent.getWorldQuaternion(QW)).y : 0; m.rotation.y = Math.atan2(c.p[0] - V3.x, c.p[2] - V3.z) - py; }   // cards that turn to face you
+  lightsAt(T, c); cap.position.y = H - CAPTIONS.y * H; drawCaption(T);
+  const q = clamp01(Math.abs(c.k - pk) / 0.24) * Math.sign(c.k - pk) * (c.b.s < c.a.s ? 1 : -1);   // zooming in, the cloud comes at you; out, it falls away
+  VEIL.forEach((m, i) => { m.visible = va > 0.002; m.material.opacity = va * (i ? 0.9 : 1); m.material.color.copy(BG).lerp(WHITE, 0.82); m.scale.setScalar((i ? 1.45 : 1.1) + (i ? 0.55 : 0.4) * q); m.position.x = W / 2 + (i ? -1 : 1) * q * W * 0.08; });
+  VIG.material.opacity = LOOK.vignette * 0.5; GRAIN.visible = LOOK.grain > 0; GRAIN.material.opacity = LOOK.grain; const gr = rng(Math.floor(T * 24) + 1); GRAIN.material.map.offset.set(gr(), gr());
+  renderer.clear(); renderer.render(scene, camera); renderer.render(ovScene, ovCam);
+  $('time').textContent = `${T.toFixed(1)} / ${TL.len.toFixed(1)}`; if (!scrubbing) $('scrub').value = T;
+}
+
+// ════ RECORDING: real time, 1080×1920 picture and sound; MP4 where the browser can, else WebM (never renamed) ════
+const REC = { active: false }, MIMES = ['video/mp4;codecs="avc1.640028,mp4a.40.2"', 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs="vp9,opus"', 'video/webm;codecs="vp8,opus"', 'video/webm'];
+const status = (msg, cls = '') => { $('status').textContent = msg; $('status').className = cls; };
+async function startRecording() {
+  if (!window.MediaRecorder || !renderer.domElement.captureStream) return status('This browser can’t record. Use Chrome, Edge or Safari.', 'err');
+  if (MISSING.size) return status('Missing pictures, so recording is off: ' + [...MISSING].join(', '), 'err');
+  await ensureAudio(); stop(); clock.t = 0; renderAt(0);
+  const type = MIMES.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } }) || '';
+  const stream = new MediaStream([...renderer.domElement.captureStream(REEL.fps || 30).getVideoTracks(), ...(AUDIO.rec ? AUDIO.rec.stream.getAudioTracks() : [])]);
+  const rec = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: 12e6, audioBitsPerSecond: 192000 });
+  Object.assign(REC, { active: true, rec, stream, chunks: [], hidden: document.hidden, cancelled: false, stopping: false });
+  rec.ondataavailable = e => { if (e.data && e.data.size) REC.chunks.push(e.data); }; rec.onstop = onRecorded;
+  setRecUI(true); status(`Recording ${TL.len.toFixed(1)} s in real time. Keep this tab visible.`); rec.start(250); await play();
+}
+function finishRecording(cancel) { if (!REC.active || REC.stopping) return; REC.cancelled = cancel; REC.stopping = true; stop(); setTimeout(() => { if (REC.rec.state !== 'inactive') REC.rec.stop(); }, cancel ? 0 : 80); }
+function onRecorded() {
+  REC.stream.getVideoTracks().forEach(t => t.stop()); REC.active = false; setRecUI(false);
+  const { chunks, rec, hidden, cancelled } = REC; if (cancelled) return status('Recording cancelled.'); if (!chunks.length) return status('Nothing was recorded. Try again with this tab in front.', 'err');
+  const type = (rec.mimeType || chunks[0].type || 'video/webm').split(';')[0], ext = /mp4/.test(type) ? 'mp4' : 'webm', blob = new Blob(chunks, { type });
+  const name = `${String(REEL.title || 'reel').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${TL.len.toFixed(1)}s.${ext}`, a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  status(`Saved ${name} (${(blob.size / 1e6).toFixed(1)} MB, ${rec.mimeType || type}).` + (ext === 'webm' ? ' This browser records WebM; convert it if your app needs MP4.' : '') + (hidden ? ' The tab was hidden while recording, so frames may be missing: record again with it in front.' : ''), hidden ? 'err' : 'ok');
+}
+function setRecUI(on) { for (const id of ['play', 'restart', 'scrub', 'hold', 'prevChk', 'nextChk', 'shot']) $(id).disabled = on; $('rec').textContent = on ? '■ Stop recording' : '● Record & Download'; }
+document.addEventListener('visibilitychange', () => { if (REC.active && document.hidden) REC.hidden = true; });
+
+// ════ PAGE: controls, full screen, check frames ════
+let chk = -1;
+function showCheck(i) {
+  const L = typeof CHECKS === 'undefined' ? [] : CHECKS; if (REC.active || !L.length) return;
+  stop(); chk = (i + L.length) % L.length; const t = L[chk][0] < 0 ? TL.len + L[chk][0] : L[chk][0]; clock.t = Math.min(Math.max(0, t), TL.len - 1e-3); renderAt(clock.t);
+  $('badge').textContent = `${chk + 1}/${L.length} · ${t.toFixed(2)} s · ${L[chk][1]}`; $('badge').style.display = 'block';
+  $('chkInfo').textContent = `Frame ${chk + 1} of ${L.length}: ${t.toFixed(2)} s, ${L[chk][1]}. Press 📋 Copy screenshot and paste it in the chat` + (chk === L.length - 1 ? ' (that was the last one).' : ', then 📸 again.');
+}
+function screenshot() {   // copies the frame on screen to the clipboard as a 1080×1920 PNG; with Guides on, the caption band, the Reels line and the label are drawn in
+  if (REC.active) return; renderAt(clock.t);   // draw now and read the canvas in the same task
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.drawImage(renderer.domElement, 0, 0, W, H);
+  const onChk = $('badge').style.display === 'block', label = onChk ? $('badge').textContent : `${clock.t.toFixed(2)} s`;
+  if ($('guidesOn').checked) {
+    x.fillStyle = 'rgba(255,70,70,0.09)'; x.fillRect(0, 300, W, 350); x.strokeStyle = 'rgba(255,70,70,0.85)'; x.setLineDash([18, 12]);
+    x.lineWidth = 2; x.beginPath(); x.moveTo(0, 300); x.lineTo(W, 300); x.moveTo(0, 650); x.lineTo(W, 650); x.stroke(); x.lineWidth = 4; x.beginPath(); x.moveTo(0, 1250); x.lineTo(W, 1250); x.stroke(); x.setLineDash([]);
+    x.font = '600 30px system-ui, sans-serif'; const tw0 = x.measureText(label).width; x.fillStyle = 'rgba(0,0,0,0.72)'; x.beginPath(); x.roundRect(16, 16, tw0 + 32, 50, 12); x.fill(); x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.fillText(label, 32, 42);
+  }
+  const what = onChk ? `frame ${chk + 1}/${CHECKS.length} (${clock.t.toFixed(2)} s)` : `the frame at ${clock.t.toFixed(2)} s`;
+  const png = new Promise((ok, no) => cv.toBlob(b => b ? ok(b) : no(new Error('no image')), 'image/png'));
+  const show = why => png.then(b => showShot(URL.createObjectURL(b), why), () => status('Couldn’t make the screenshot.', 'err'));   // blocked: show the frame so it can be copied by hand
+  if (!navigator.clipboard || !window.ClipboardItem) return show('This browser can’t copy images by itself.');
+  try { navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).then(() => status(`Copied ${what}. Paste it in the chat.`, 'ok'), () => show('Copying is blocked in this view (the chat preview blocks the clipboard).')); }
+  catch (e) { show('Copying is blocked in this view.'); }
+}
+function showShot(url, why) {   // the frame in an overlay: right-click (or press and hold) → Copy image
+  let o = $('shotView'); if (o) o.remove();
+  o = document.createElement('div'); o.id = 'shotView'; o.style.cssText = 'position:fixed;inset:0;z-index:200;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;font:14px/1.4 system-ui,sans-serif;color:#fff;text-align:center';
+  const img = Object.assign(document.createElement('img'), { src: url }); img.style.cssText = 'max-height:78vh;max-width:100%;border-radius:8px;box-shadow:0 0 0 1px #fff3';
+  const msg = document.createElement('div'); msg.style.maxWidth = '520px'; msg.textContent = why + ' Right-click the picture and choose Copy image (on a phone: press and hold, then Copy). Or open the downloaded file in Chrome, where the button copies in one click.';
+  const x = document.createElement('button'); x.textContent = 'Close'; x.onclick = () => o.remove(); o.append(img, msg, x); document.body.append(o);
+  addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { o.remove(); removeEventListener('keydown', esc); } });
+  status('Copy it by hand from the picture shown.', '');
+}
+const stage = $('stage');
+function fit() { const fs = stage.classList.contains('fs'), s = Math.min((fs ? innerHeight : Math.min(innerHeight - 40, 900)) / H, (fs ? innerWidth : Math.min(innerWidth - 32, 560)) / W); renderer.domElement.style.width = Math.round(W * s) + 'px'; renderer.domElement.style.height = Math.round(H * s) + 'px'; }
+function fullScreen(on) { stage.classList.toggle('fs', on); if (on && stage.requestFullscreen) stage.requestFullscreen().catch(() => {}); if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {}); fit(); }
+function initUI() {
+  document.title = $('title').textContent = REEL.title || '2.5D Reel';
+  $('play').onclick = () => clock.playing ? (stop(), renderAt(clock.t)) : play(); $('restart').onclick = () => { stop(); clock.t = 0; play(); };
+  $('scrub').onpointerdown = () => { scrubbing = true; }; addEventListener('pointerup', () => { scrubbing = false; }); $('scrub').oninput = () => { $('badge').style.display = 'none'; seek(parseFloat($('scrub').value)); };
+  $('nextChk').onclick = () => showCheck(chk + 1); $('prevChk').onclick = () => showCheck(chk - 1); $('shot').onclick = () => { stop(); screenshot(); };
+  const gd = () => { $('guides').style.display = $('guidesOn').checked ? 'block' : 'none'; }; $('guidesOn').onchange = gd; gd();
+  $('hold').onchange = () => { UI.hold = Math.max(0, Math.min(60, parseFloat($('hold').value) || 0)); stop(); retime(); seek(Math.min(clock.t, TL.len)); };
+  $('vol').value = UI.vol; $('vol').oninput = () => { UI.vol = parseFloat($('vol').value); if (AUDIO.vol) AUDIO.vol.gain.setTargetAtTime(UI.vol, AUDIO.ctx.currentTime, 0.02); };
+  $('hear').onchange = () => { UI.hear = $('hear').checked; if (AUDIO.mon) AUDIO.mon.gain.setTargetAtTime(UI.hear ? 1 : 0, AUDIO.ctx.currentTime, 0.02); };
+  $('rec').onclick = () => REC.active ? finishRecording(true) : startRecording();
+  $('fs').onclick = () => fullScreen(true); $('fsx').onclick = () => fullScreen(false); renderer.domElement.onclick = () => { if (stage.classList.contains('fs')) $('play').click(); };
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) stage.classList.remove('fs'); fit(); }); addEventListener('resize', fit);
+  addEventListener('keydown', e => {
+    if (REC.active || /INPUT|SELECT/.test(document.activeElement.tagName)) return;
+    if (e.code === 'Space') { e.preventDefault(); $('play').click(); } else if (e.key === 'f' || e.key === 'F') fullScreen(!stage.classList.contains('fs')); else if (e.key === 'Escape') fullScreen(false); else if (e.key === 's' || e.key === 'S') { stop(); screenshot(); }
+    else if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') { e.preventDefault(); stop(); seek(clock.t + (e.shiftKey ? 1 : 1 / (REEL.fps || 30)) * (e.code === 'ArrowRight' ? 1 : -1)); }
+  });
+}
+
+/*@@REEL@@*/
+
+/*@@shared:reel-export@@*/
+/** Headless export hook, shared by every engine (p5, three, hybrid). tools/render.js drives it; the page itself never calls it.
+ *  exposeReel({ render(T), canvas, timeline: () => TL, sfx: SFX, volume: () => 0..1, ready })
+ *  window.__reel.frame(T)  draws the frame at T and returns it as a data URL (read in the same task, so WebGL needs no preserveDrawingBuffer)
+ *  window.__reel.audio()   renders every cue offline through the same compressor as the live page and returns a base64 WAV (null when silent)
+ *                          { loop: true } wraps the tails of the last sounds into the start, for seamless loops */
+function exposeReel(a) {
+  const info = () => { const tl = a.timeline(); return { len: tl.len, fps: REEL.fps || 30, title: REEL.title || 'reel', w: a.canvas.width, h: a.canvas.height, cues: tl.cues.length, caps: (tl.caps || []).map(c => [c.t0, Math.min(c.t1, tl.len)]) }; };
+  async function audio(o = {}) {
+    const tl = a.timeline(), sr = o.sampleRate || 48000, len = tl.len, pass = o.loop ? 2 : 1;
+    if (!tl.cues.length || typeof OfflineAudioContext === 'undefined') return null;
+    const off = new OfflineAudioContext(2, Math.ceil(len * pass * sr), sr), vol = off.createGain(), comp = off.createDynamicsCompressor(), session = off.createGain();
+    vol.gain.value = a.volume ? a.volume() : 0.8;
+    comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
+    session.connect(vol); vol.connect(comp); comp.connect(off.destination);
+    const errors = [];
+    for (let k = 0; k < pass; k++) for (const c of tl.cues) {
+      const fn = a.sfx[c.type]; if (!fn) { errors.push('unknown sound ' + c.type); continue; }
+      try { fn(off, session, Math.max(0, c.time + k * len), c); } catch (e) { errors.push(c.type + ': ' + e.message); }
+    }
+    const buf = await off.startRendering(), from = o.loop ? Math.floor(len * sr) : 0, n = Math.ceil(len * sr);
+    const L = buf.getChannelData(0), R = buf.getChannelData(1), pcm = new DataView(new ArrayBuffer(44 + n * 4));
+    const str = (p, s) => { for (let i = 0; i < s.length; i++) pcm.setUint8(p + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); pcm.setUint32(4, 36 + n * 4, true); str(8, 'WAVEfmt '); pcm.setUint32(16, 16, true); pcm.setUint16(20, 1, true); pcm.setUint16(22, 2, true);
+    pcm.setUint32(24, sr, true); pcm.setUint32(28, sr * 4, true); pcm.setUint16(32, 4, true); pcm.setUint16(34, 16, true); str(36, 'data'); pcm.setUint32(40, n * 4, true);
+    let peak = 0;
+    for (let i = 0; i < n; i++) for (let ch = 0; ch < 2; ch++) {
+      const v = Math.max(-1, Math.min(1, (ch ? R : L)[from + i] || 0)); peak = Math.max(peak, Math.abs(v)); pcm.setInt16(44 + i * 4 + ch * 2, v * 32767, true);
+    }
+    const bytes = new Uint8Array(pcm.buffer); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return { wav: btoa(bin), peakDb: peak > 0 ? 20 * Math.log10(peak) : -Infinity, errors };
+  }
+  window.__reel = { ready: Promise.resolve(a.ready).then(() => true), info, audio, frame(T, type = 'image/png', q) { a.render(T); return a.canvas.toDataURL(type, q); } };
+}
+/*@@end:reel-export@@*/
+
+// ════ START ════
+await Promise.all(Object.entries(window.REEL_IMAGES || {}).map(([k, s]) => new Promise(ok => { const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = () => { MISSING.add(k); ok(); }; im.src = s; })));
+UI.hold = REEL.ctaHold || 0; retime(); build(); initUI(); fit(); renderAt(0);
+status(MISSING.size ? 'Missing pictures (grey cards): ' + [...MISSING].join(', ') + '. Recording is off until they are attached.' : 'Record & Download saves the reel at 1080×1920 in real time, with its sound.', MISSING.size ? 'err' : '');
+const FONT = document.createElement('link'); FONT.rel = 'stylesheet'; FONT.href = 'https://fonts.googleapis.com/css2?family=' + String(CAPTIONS.font).trim().replace(/ /g, '+') + ':wght@' + (CAPTIONS.weight || 700) + '&display=block';
+FONT.onload = () => document.fonts.load(`${CAPTIONS.weight || 700} 72px "${CAPTIONS.font}"`).then(() => { TL.caps.forEach(c => { c.lay = null; }); capKey = ''; if (!clock.playing) renderAt(clock.t); }).catch(() => {});
+document.head.appendChild(FONT);
+exposeReel({ render: renderAt, canvas: renderer.domElement, timeline: () => TL, sfx: SFX, volume: () => UI.vol, ready: new Promise(ok => { FONT.addEventListener('load', ok); FONT.addEventListener('error', ok); setTimeout(ok, 6000); }).then(() => document.fonts.load(`${CAPTIONS.weight || 700} 72px "${CAPTIONS.font}"`)).catch(() => {}) });   // tools/render.js
+</script>
+</body>
+</html>

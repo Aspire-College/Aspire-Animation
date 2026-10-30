@@ -1,0 +1,77 @@
+{
+  "_about": "Family tree of the reel skills. tools/skills.js validates it and prints the tree; new-reel.js reads the engine from it. kind: engine (builds reels, owns an engine) | series (a reel template that extends a parent) | prompts (no code) | tool (works on the repo itself). Update this file whenever a skill is added, renamed, re-parented or versioned.",
+  "skills": {
+    "reel-creator": {
+      "kind": "engine",
+      "engine": "p5",
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "claude.ai account skill reel-creator, imported 2026-10-30",
+      "summary": "2D p5.js reels: American realism by default, named styles, image-assisted mode"
+    },
+    "reel-creator-3d": {
+      "kind": "engine",
+      "engine": "three",
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "claude.ai account skill reel-creator-3d, imported 2026-10-30",
+      "summary": "3D Three.js reels: clay dioramas in one sky, cinematic camera, story lighting"
+    },
+    "reel-creator-2-5d": {
+      "kind": "engine",
+      "engine": "hybrid",
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "claude.ai account skill reel-creator-2-5d, imported 2026-10-30",
+      "summary": "2.5D reels: p5.js-painted cards standing in a Three.js space, parallax and depth"
+    },
+    "educational": {
+      "kind": "series",
+      "engine": "p5",
+      "parent": "reel-creator",
+      "version": "1.0.0",
+      "origin": "created 2026-10-30",
+      "summary": "Kinetic typography explainers: the words are the picture"
+    },
+    "storytelling": {
+      "kind": "series",
+      "engine": "p5",
+      "parent": "reel-creator",
+      "version": "1.0.0",
+      "origin": "created 2026-10-30",
+      "summary": "Image-led stories: the 'with images' flow is on by default"
+    },
+    "asmr-loop": {
+      "kind": "series",
+      "engine": "three",
+      "parent": "reel-creator-3d",
+      "version": "1.0.0",
+      "origin": "created 2026-10-30",
+      "summary": "10-second seamless satisfying loops, sound-led"
+    },
+    "ai-video": {
+      "kind": "prompts",
+      "engine": null,
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "built on the claude.ai account skill reel-visual-hook, 2026-10-30",
+      "summary": "AI video prompts and reel ideas only, never code"
+    },
+    "new-series": {
+      "kind": "tool",
+      "engine": null,
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "created 2026-10-30",
+      "summary": "Saves a new reel concept as a series template skill"
+    },
+    "skill-workshop": {
+      "kind": "tool",
+      "engine": null,
+      "parent": null,
+      "version": "1.0.0",
+      "origin": "created 2026-10-30",
+      "summary": "Improves a skill, derives a child skill, syncs from claude.ai"
+    }
+  }
+}
