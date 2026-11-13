@@ -98,7 +98,7 @@ if (R) {
 def check(html):
     node = shutil.which('node')
     if not node: return print('node is missing: the code was not checked')
-    mod = html.split('<script type="module">', 1)[1].rsplit('</script>', 1)[0]; d = pathlib.Path('.check'); d.mkdir(exist_ok=True); (d / 'm.mjs').write_text(mod)
+    mod = html.split('<script type="module">', 1)[1].split('</script>', 1)[0]; d = pathlib.Path('.check'); d.mkdir(exist_ok=True); (d / 'm.mjs').write_text(mod)
     r = subprocess.run([node, '--check', str(d / 'm.mjs')], capture_output=True, text=True)
     if r.returncode: return print('✗ SYNTAX ERROR\n' + r.stderr[-1500:])
     (d / 'run.mjs').write_text('const { THREE, RoundedBoxGeometry } = globalThis;\n' + re.sub(r'^import .*$', '', mod, flags=re.M) + '\nglobalThis.__check = { TL, renderAt, camAt, veilOf, screenOf, screenR, clearance, SCRIPT, CHECKS: typeof CHECKS === "undefined" ? [] : CHECKS, SFX, MAP: typeof MAP === "undefined" ? null : MAP, meshes: () => MESHES };\n')
