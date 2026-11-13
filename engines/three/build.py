@@ -48,8 +48,8 @@ def encode(folder):
 
 HARNESS = r'''
 const mk = () => { const p = new Proxy(function () {}, { get: (t, k) => k === 'then' ? undefined : k === Symbol.toPrimitive ? () => 0 : k === Symbol.iterator ? function* () {} : p, set: () => true, apply: () => p, construct: () => p }); return p; }, S = mk();
-Object.assign(globalThis, { THREE: new Proxy({}, { get: () => S }), RoundedBoxGeometry: S, window: globalThis, innerWidth: 1200, innerHeight: 900, addEventListener() {}, requestAnimationFrame: () => 0, cancelAnimationFrame() {},
-  document: { getElementById: () => S, createElement: () => S, addEventListener() {}, body: S, fonts: { load: () => Promise.resolve() }, hidden: false },
+Object.assign(globalThis, { THREE: new Proxy({}, { get: () => S }), RoundedBoxGeometry: S, RoomEnvironment: S, window: globalThis, innerWidth: 1200, innerHeight: 900, addEventListener() {}, requestAnimationFrame: () => 0, cancelAnimationFrame() {},
+  document: { getElementById: () => S, createElement: () => S, addEventListener() {}, body: S, head: S, fonts: { load: () => Promise.resolve() }, hidden: false },
   Image: class { set src(v) { this.naturalWidth = 400; this.naturalHeight = 600; setTimeout(() => this.onload && this.onload(), 0); } }, REEL_IMAGES: __IMAGES__ });
 let errs = 0;
 try { await import('./run.mjs'); } catch (e) { errs++; console.log('✗ while building:', String(e.stack || e).split('\n').slice(0, 3).join(' | ')); }
@@ -101,7 +101,7 @@ def check(html):
     mod = html.split('<script type="module">', 1)[1].split('</script>', 1)[0]; d = pathlib.Path('.check'); d.mkdir(exist_ok=True); (d / 'm.mjs').write_text(mod)
     r = subprocess.run([node, '--check', str(d / 'm.mjs')], capture_output=True, text=True)
     if r.returncode: return print('✗ SYNTAX ERROR\n' + r.stderr[-1500:])
-    (d / 'run.mjs').write_text('const { THREE, RoundedBoxGeometry } = globalThis;\n' + re.sub(r'^import .*$', '', mod, flags=re.M) + '\nglobalThis.__check = { TL, renderAt, camAt, veilOf, screenOf, screenR, clearance, SCRIPT, CHECKS: typeof CHECKS === "undefined" ? [] : CHECKS, SFX, MAP: typeof MAP === "undefined" ? null : MAP, meshes: () => MESHES };\n')
+    (d / 'run.mjs').write_text('const { THREE, RoundedBoxGeometry, RoomEnvironment } = globalThis;\n' + re.sub(r'^import .*$', '', mod, flags=re.M) + '\nglobalThis.__check = { TL, renderAt, camAt, veilOf, screenOf, screenR, clearance, SCRIPT, CHECKS: typeof CHECKS === "undefined" ? [] : CHECKS, SFX, MAP: typeof MAP === "undefined" ? null : MAP, meshes: () => MESHES };\n')
     keys = re.findall(r'"([^"]+)": "data:', pathlib.Path('images.js').read_text()) if pathlib.Path('images.js').exists() else []
     (d / 'harness.mjs').write_text(HARNESS.replace('__IMAGES__', json.dumps({k: '' for k in keys})))
     r = subprocess.run([node, 'harness.mjs'], capture_output=True, text=True, cwd=d, timeout=300); print((r.stdout + r.stderr)[-6000:])

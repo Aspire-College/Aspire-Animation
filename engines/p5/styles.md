@@ -4,11 +4,11 @@ Part of the `reel-creator` skill. *Section names in italics refer to the `reel-c
 
 ## Named style: Sun-print
 
-When the user says **"sun-print"**, **"sun print"** or **"cyanotype"** (or picks it from a style sheet), use `references/sunprint.md` and `assets/template_sunprint.html` instead of American realism. It is one ink on a deep ground: pale soft-edged shapes, a theme colour chosen from the script's main element, paper grain, edge to edge. If the reference file is not available, build it from this description: pale paper-white to pale-tint silhouettes with a soft two-step halo on a deep single-hue ground, detail as ground-coloured cut-out lines, slow exposure patches, a glow behind the active element, one burst of pale light on the biggest beat (inside a scene, not as a scene change), Playfair Display captions. Scene changes follow *Scene changes*, whatever the reference file or its template does.
+When the user says **"sun-print"**, **"sun print"** or **"cyanotype"** (or picks it from a style sheet), use `references/sunprint.md` and `assets/template_sunprint.html` instead of your own art direction or American realism. It is one ink on a deep ground: pale soft-edged shapes, a theme colour chosen from the script's main element, paper grain, edge to edge. If the reference file is not available, build it from this description: pale paper-white to pale-tint silhouettes with a soft two-step halo on a deep single-hue ground, detail as ground-coloured cut-out lines, slow exposure patches, a glow behind the active element, one burst of pale light on the biggest beat (inside a scene, not as a scene change), Playfair Display captions. Scene changes follow *Scene changes*, whatever the reference file or its template does.
 
 ## Named style: Grain style
 
-When the user says **"grain style"** (or "grain look", "grainy style"), use this recipe instead of American realism, and skip the style-variations flow.
+When the user says **"grain style"** (or "grain look", "grainy style"), use this recipe instead of your own art direction or American realism, and skip the style-variations flow.
 
 **Grain style is the treatment only, not the scenery.** It came from a dusk landscape with a hatched tree, but the tree, the hills, the sand, the town and every other element of that picture are NOT part of the style. Do not add them. The subjects, setting and props of the reel come only from the script. A script about money gets coins, a vault and charts drawn in this style; a script about the sea gets waves and a boat. Add a tree, hills or a landscape only if the script itself calls for them.
 

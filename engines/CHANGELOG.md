@@ -2,6 +2,10 @@
 
 Newest first. One line per change: the engine, what changed, and why.
 
+## 2026-11-13 — three: no house style
+
+- **three:** the engine no longer assumes clay. `LOOK.metal` (0) and per-form `mat(col, { rough, metal })` allow gloss and metal, and metal forms (only those) reflect a soft studio environment (`RoomEnvironment`, strength `LOOK.env`); captions take any Google Font (`CAPTIONS.font` and `CAPTIONS.weight`, loaded at start as in hybrid) and an optional soft `CAPTIONS.shadow`; the fixed Libre Baskerville link and the "Clay" page subtitle are gone. Defaults are unchanged, so old reels rebuild the same. `build.py --check` stubs `document.head`.
+
 ## 2026-11-13 — check harness reads the right script
 
 - **three, hybrid:** `build.py --check` cut the page's module at the last `</script>`, which since the reel source was embedded is the `reel-source` block, so every check reported a false SYNTAX ERROR and skipped the frame-by-frame harness. It now cuts at the module's own `</script>`.

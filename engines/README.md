@@ -5,7 +5,7 @@ The code every reel is built on. A reel folder only holds its own `reel.js` (and
 | Engine | Skill | What it draws | Build |
 |---|---|---|---|
 | `p5/` | `reel-creator` | 2D: every frame drawn with p5.js 1.11 | `p5/build.py` (includes, fonts, images) |
-| `three/` | `reel-creator-3d` | 3D: clay dioramas in Three.js 0.170 | `three/build.py` (`--check` runs a code harness) |
+| `three/` | `reel-creator-3d` | 3D in Three.js 0.170, a fresh look every reel | `three/build.py` (`--check` runs a code harness) |
 | `hybrid/` | `reel-creator-2-5d` | 2.5D: p5.js-painted cards in a Three.js space | `hybrid/build.py` (`--check` runs a code harness) |
 
 Every template has the same page around the picture: Play, Restart, **Full screen** (F, Esc; tap to play), scrubber and frame stepping, **📷 Screenshot** (S: copies a 1080×1920 PNG with the guides), Reels UI guides, End screen hold, SFX volume, **Record & Download** (real time; MP4 where the browser can, else WebM), captions line by line, and the export hook `tools/render.js` uses.

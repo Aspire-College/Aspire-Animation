@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>3D Reel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=block" />
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
 <style>
 :root { color-scheme: dark; } * { box-sizing: border-box; }
@@ -29,7 +28,7 @@ input[type=number] { width: 76px; } input[type=range] { width: 100%; accent-colo
 <main>
 <div id="stage"><div id="view"><button id="fsx" title="Exit full screen">✕</button><div id="guides"><b style="top:15.6%;height:18.2%"></b><i style="top:65.1%"></i></div><div id="badge"></div></div></div>
 <aside>
-<div><h1 id="title">3D Reel</h1><p>1080×1920 · Three.js · Clay</p></div>
+<div><h1 id="title">3D Reel</h1><p>1080×1920 · Three.js</p></div>
 <div class="card"><div class="row"><button id="play">▶ Play</button><button id="restart">⟲</button><button id="fs">⛶ Full screen</button><span id="time">0.0 / 0.0</span></div>
 <input id="scrub" type="range" min="0" max="10" step="0.001" value="0" style="margin-top:10px" /><p>Space play/pause · ←/→ one frame (Shift: one second) · F full screen</p></div>
 <div class="card"><div class="row"><button id="prevChk">◀</button><button id="nextChk" style="flex:1">📸 Next check frame</button></div>
@@ -44,6 +43,7 @@ input[type=number] { width: 76px; } input[type=range] { width: 100%; accent-colo
 <script type="module">
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 // ════ ENGINE: copied out of the skill by build.py. Never retype or edit it: the reel lives in reel.js. ════
 const W = 1080, H = 1920, TAU = Math.PI * 2, $ = id => document.getElementById(id);
 const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x, mix = (a, b, k) => a + (b - a) * k, mixv = (a, b, k) => a.map((v, i) => mix(v, b[i], k)), add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -71,15 +71,16 @@ const P = { wood0: '#7B4F2D', wood1: '#A47445', cream: '#EFE8D4', paper: '#F6EED
 function setRoom(name) { const r = ROOMS[name] || ROOMS.dusk; Object.assign(P, { room: name, wall: r[0], wall2: r[1], wain: r[2] }); }
 setRoom('dusk');
 
-// ════ CLAY KIT: every form is a rounded clay box, a cylinder or a low-poly ball in matte clay colours ════
-const LOOK = { bevel: 0.05, rough: 1, sat: 0.85, vary: 0.035, seg: 16 };
-const GEO = new Map(), VARY = rng(7);
+// ════ FORM KIT: every form is a rounded box, a cylinder or a low-poly ball; LOOK sets their finish (set it at the top of reel.js for the reel's art direction) ════
+const LOOK = { bevel: 0.05, rough: 1, metal: 0, env: 0.6, sat: 0.85, vary: 0.035, seg: 16 };   // bevel (m; 0.005 for crisp edges), rough (0 glossy..1 matte), metal (0..1; metal forms reflect a soft studio at strength env), sat (colour saturation factor), vary (tone variation), seg (cylinder sides)
+const GEO = new Map(), VARY = rng(7), ENV = {};
 const isGrey = g => { for (let o = g; o; o = o.parent) { if (o.userData.grey) return true; if (o.userData.key) return false; } return false; };   // grey stops at its own level
 function mat(col, o = {}) {
   const c = new THREE.Color(col || '#ffffff'), h = {}; c.getHSL(h);
   c.setHSL(h.h, Math.min(1, h.s * LOOK.sat), clamp01(h.l + (o.map || o.vary === false ? 0 : (VARY() - 0.5) * LOOK.vary)));
   if (o.grey) { const l = c.r * 0.3 + c.g * 0.59 + c.b * 0.11; c.setRGB(l, l, l); }
-  const m = new THREE.MeshStandardMaterial({ color: c, roughness: LOOK.rough, metalness: 0, map: o.map || null, side: o.side || THREE.FrontSide, flatShading: !!o.flat, transparent: !!o.transparent, opacity: o.opacity ?? 1 });
+  const m = new THREE.MeshStandardMaterial({ color: c, roughness: o.rough ?? LOOK.rough, metalness: o.metal ?? LOOK.metal, map: o.map || null, side: o.side || THREE.FrontSide, flatShading: !!o.flat, transparent: !!o.transparent, opacity: o.opacity ?? 1 });
+  if (m.metalness > 0) { ENV.tex = ENV.tex || new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; m.envMap = ENV.tex; m.envMapIntensity = o.env ?? LOOK.env; }   // metal reflects a soft studio, only where metal is used
   if (o.alphaTest) m.alphaTest = o.alphaTest;
   if (o.em) { m.emissive.set(o.em); m.emissiveIntensity = o.ei ?? 1; }
   if (o.glow) { m.emissive.set('#ffffff'); m.emissiveMap = o.map; m.emissiveIntensity = o.glow; }
@@ -489,7 +490,7 @@ function lightsAt(T, c) {
 }
 
 // ════ CAPTIONS: line by line in the upper safe area, drawn over the picture (so they are recorded) ════
-const CAPTIONS = { y: 0.25, size: 72, maxWidth: 860, maxLines: 3, maxWords: 7, color: '#F6EEDA', emphasis: '#E9B44C', outline: 8, outlineColor: '#12171A', font: 'Libre Baskerville' };
+const CAPTIONS = { y: 0.25, size: 72, maxWidth: 860, maxLines: 3, maxWords: 7, color: '#F6EEDA', emphasis: '#E9B44C', outline: 8, outlineColor: '#12171A', shadow: null, font: 'Libre Baskerville', weight: 700 };   // font: any Google Font that has this weight (loaded at start); shadow: [blur, colour] or null
 const ovScene = new THREE.Scene(), ovCam = new THREE.OrthographicCamera(0, W, H, 0, -1, 1);
 const overlay = (d, w, h, y, ord) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: d.tex, transparent: true, depthTest: false, toneMapped: false })); m.position.set(W / 2, y, 0); m.renderOrder = ord; ovScene.add(m); return m; };
 overlay(drawing(64, 128, c => { const g = c.createRadialGradient(32, 64, 12, 32, 64, 84); g.addColorStop(0, 'rgba(10,12,14,0)'); g.addColorStop(1, 'rgba(10,12,14,0.5)'); c.fillStyle = g; c.fillRect(0, 0, 64, 128); }), W, H, H / 2, 0);
@@ -510,7 +511,7 @@ function layout(c, x) {
   if (c.lay) return c.lay;
   let size = CAPTIONS.size, sp = 0, lines;
   const wrap = mw => { const ls = []; let cur = { words: [], w: 0 }; for (const tk of c.toks) { const ww = x.measureText(tk.w).width, nw = cur.words.length ? cur.w + sp + ww : ww; if (cur.words.length && nw > mw) { ls.push(cur); cur = { words: [{ ...tk, ww }], w: ww }; } else { cur.words.push({ ...tk, ww }); cur.w = nw; } } ls.push(cur); return ls; };
-  for (;;) { x.font = `700 ${size}px "${CAPTIONS.font}", Georgia, serif`; sp = x.measureText(' ').width; lines = wrap(CAPTIONS.maxWidth); if (lines.length <= CAPTIONS.maxLines || size <= 40) break; size -= 4; }
+  for (;;) { x.font = `${CAPTIONS.weight || 700} ${size}px "${CAPTIONS.font}", Georgia, serif`; sp = x.measureText(' ').width; lines = wrap(CAPTIONS.maxWidth); if (lines.length <= CAPTIONS.maxLines || size <= 40) break; size -= 4; }
   if (lines.length > 1) { let lo = CAPTIONS.maxWidth * 0.4, hi = CAPTIONS.maxWidth; for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (wrap(mid).length <= lines.length) hi = mid; else lo = mid; } lines = wrap(hi); }
   return (c.lay = { size, lines, sp });
 }
@@ -522,9 +523,9 @@ function drawCaption(T) {
   const x = CAPD.ctx; x.clearRect(0, 0, W, CAPH);
   if (c) {
     const L = layout(c, x), lh = L.size * 1.3, off = (1 - k) * (1 - k) * 28;
-    x.globalAlpha = a; x.font = `700 ${L.size}px "${CAPTIONS.font}", Georgia, serif`; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = CAPTIONS.outline * 2; x.strokeStyle = CAPTIONS.outlineColor;
+    x.globalAlpha = a; x.font = `${CAPTIONS.weight || 700} ${L.size}px "${CAPTIONS.font}", Georgia, serif`; if (CAPTIONS.shadow) { x.shadowBlur = CAPTIONS.shadow[0]; x.shadowColor = CAPTIONS.shadow[1]; } x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = CAPTIONS.outline * 2; x.strokeStyle = CAPTIONS.outlineColor;
     L.lines.forEach((ln, j) => { let px = (W - ln.w) / 2; const py = CAPH / 2 + (j - (L.lines.length - 1) / 2) * lh + off; for (const wd of ln.words) { if (CAPTIONS.outline) x.strokeText(wd.w, px, py); x.fillStyle = wd.em ? CAPTIONS.emphasis : CAPTIONS.color; x.fillText(wd.w, px, py); px += wd.ww + L.sp; } });
-    x.globalAlpha = 1;
+    x.globalAlpha = 1; x.shadowBlur = 0;
   }
   CAPD.tex.needsUpdate = true;
 }
@@ -1095,8 +1096,10 @@ function exposeReel(a) {
 await Promise.all(Object.entries(window.REEL_IMAGES || {}).map(([k, s]) => new Promise(ok => { const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = () => { MISSING.add(k); ok(); }; im.src = s; })));
 UI.hold = REEL.ctaHold || 0; retime(); build(); initUI(); fit(); renderAt(0);
 status(MISSING.size ? 'Missing pictures (grey cards): ' + [...MISSING].join(', ') + '. Recording is off until they are attached.' : 'Record & Download saves the reel at 1080×1920 in real time, with its sound.', MISSING.size ? 'err' : '');
-document.fonts.load(`700 72px "${CAPTIONS.font}"`).then(() => { TL.caps.forEach(c => { c.lay = null; }); capKey = ''; if (!clock.playing) renderAt(clock.t); }).catch(() => {});
-exposeReel({ render: renderAt, canvas: renderer.domElement, timeline: () => TL, sfx: SFX, volume: () => UI.vol, ready: document.fonts.load(`700 72px "${CAPTIONS.font}"`).catch(() => {}) });   // tools/render.js
+const FONT = document.createElement('link'); FONT.rel = 'stylesheet'; FONT.href = 'https://fonts.googleapis.com/css2?family=' + String(CAPTIONS.font).trim().replace(/ /g, '+') + ':wght@' + (CAPTIONS.weight || 700) + '&display=block';
+FONT.onload = () => document.fonts.load(`${CAPTIONS.weight || 700} 72px "${CAPTIONS.font}"`).then(() => { TL.caps.forEach(c => { c.lay = null; }); capKey = ''; if (!clock.playing) renderAt(clock.t); }).catch(() => {});
+document.head.appendChild(FONT);
+exposeReel({ render: renderAt, canvas: renderer.domElement, timeline: () => TL, sfx: SFX, volume: () => UI.vol, ready: new Promise(ok => { FONT.addEventListener('load', ok); FONT.addEventListener('error', ok); setTimeout(ok, 6000); }).then(() => document.fonts.load(`${CAPTIONS.weight || 700} 72px "${CAPTIONS.font}"`)).catch(() => {}) })   // tools/render.js
 </script>
 </body>
 </html>
