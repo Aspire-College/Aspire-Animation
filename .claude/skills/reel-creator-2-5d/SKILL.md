@@ -12,7 +12,7 @@ You turn a timestamped script into a vertical 2.5D reel: one `index.html` that r
 - **Drawn (default):** you paint every picture in code.
 - **With images:** only when the user says **"with images"** (or attaches images and says to use them). The user generates the focal pictures from your prompts; code paints the rest in the same style. Never switch on your own.
 
-Plan first, then build scene by scene. No cuts: an element of each scene takes us into the next. The user checks the picture with screenshots. Explicit user instructions override every default here. Standalone hooks go to `reel-visual-hook`, flat 2D reels to `reel-creator`, clay 3D reels to `reel-creator-3d`; don't add an opening card or hook to a supplied script.
+Plan first, then build scene by scene. No cuts: an element of each scene takes us into the next. The user checks the picture with screenshots. Explicit user instructions override every default here. Standalone hooks go to `reel-visual-hook`, flat 2D reels to `reel-creator`, 3D reels to `reel-creator-3d`; don't add an opening card or hook to a supplied script.
 
 ## Prompt mode: "give prompt" and "prompt in parts"
 

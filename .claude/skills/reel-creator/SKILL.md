@@ -1,6 +1,6 @@
 ---
 name: "reel-creator"
-description: "Aspire repo engine skill (engine: p5). Turn a timestamped Reel script into an animated 9:16 p5.js reel (captions, a diverse sound score, Record & Download), planned first with no cuts: American realism by default; sun-print, grain style and style variations on request; image-assisted mode with 'with images'. Standalone hooks and AI video prompts go to ai-video. Say 'give prompt' for a ready-to-paste build prompt, or 'prompt in parts' for the plan-first, part-by-part version; no reel is built in either case."
+description: "Aspire repo engine skill (engine: p5). Turn a timestamped Reel script into an animated 9:16 p5.js reel (captions, a diverse sound score, Record & Download), planned first with no cuts: a fresh art direction every reel (no house style); American realism, sun-print, grain style and style variations on request; image-assisted mode with 'with images'. Standalone hooks and AI video prompts go to ai-video. Say 'give prompt' for a ready-to-paste build prompt, or 'prompt in parts' for the plan-first, part-by-part version; no reel is built in either case."
 ---
 
 # Reel Creator
@@ -12,9 +12,9 @@ Two ways of working share one engine:
 - **Drawn mode (default):** everything is drawn in code.
 - **Image-assisted mode (hybrid):** generated artwork supplies distinctive characters, illustrated environments, textures and detailed props. p5.js supplies motion, diagrams, particles, masks, camera transforms, captions and visual explanations.
 
-Four style features sit on top of both modes: the default **American realism** style (used whenever no other style is asked for, described below), and the named **Sun-print** and **Grain style** recipes and the **Style variations** flow (five style prompts first), which are in `styles.md` on the engine page (see *Named styles and style variations*).
+There is **no house style**: when the user names no look, you choose a fresh art direction for each reel from its script (see *Art direction*). Named looks sit on top of both modes, used only when the user asks for them: **American realism** (described below), and the **Sun-print** and **Grain style** recipes and the **Style variations** flow (five style prompts first), which are in `styles.md` on the engine page (see *Named styles and style variations*).
 
-**A style is a treatment, never a set of elements.** Whether the style is the default (American realism), named ("grain style"), picked from a style sheet, or taken from a reference image, carry over only how things are drawn: colour, texture, edges, shading, grain, type. Never carry over the subjects, scenery or props that appear in the sample (a tree, hills, a town, a person, a building, a logo). What appears in the reel comes only from the script's own words, drawn in that style.
+**A style is a treatment, never a set of elements.** Whether the style is your own art direction, named ("American realism", "grain style"), picked from a style sheet, or taken from a reference image, carry over only how things are drawn: colour, texture, edges, shading, grain, type. Never carry over the subjects, scenery or props that appear in the sample (a tree, hills, a town, a person, a building, a logo). What appears in the reel comes only from the script's own words, drawn in that style.
 
 **Plan before you build.** Every reel starts with a plan of its scene changes and sounds, shared with the user, in which you criticize your own ideas and fix their loopholes (see *Plan first*). There are no cuts: an element of each scene takes us into the next (see *Scene changes*).
 
@@ -86,11 +86,18 @@ Decide this first, because it changes the plan.
 - **Image-assisted mode.** Use it only when the user says **"with images"** (or clearly asks for images, pictures or generated art: "use images", "with AI images", "build it with my character"), or supplies images or audio and says to use them as assets in the reel. If the user has not said "with images", stay in drawn mode and follow the style with pure JS. Never switch on your own, and don't offer images or plan assets for ordinary code-only requests.
 - **Mixing is normal in image-assisted mode.** Images carry what is hard to draw; code carries everything else. Prefer drawing simple shapes and labels in code.
 - Whether to use a reusable character kit is a separate decision (see *Reusable character identity* in `images.md`). A one-off illustration or a single-pose reel does not need one.
-- **Style requests do not change the mode.** The default American realism style, "sun-print", "grain style", a picked style image or a style-variations round all build in drawn mode unless "with images" was said.
+- **Style requests do not change the mode.** Your own art direction, American realism, "sun-print", "grain style", a picked style image or a style-variations round all build in drawn mode unless "with images" was said.
 
-## Default style: American realism
+## Art direction: a new look every reel
 
-**When no style is asked for, build in American realism.** That means: the user named no style, attached no style reference, didn't say "grain style" or "sun-print", and didn't ask for style variations. Any of those overrides it, as does an explicit style in the user's words ("flat cel-shaded", "chalkboard"). Say in one line that you used American realism and which room colour (see below).
+**When no style is asked for, there is no default: choose the look yourself.** That means: the user named no style, attached no style reference and didn't ask for style variations. Choose the look from the script, its audience and its feeling, and never repeat the last reel's look in this chat. Looks to think in, never a menu: paper cut-out layers, gouache storybook, ink and wash, watercolour, linocut or woodcut, risograph, flat shapes with print grain, cel-shaded, chalkboard, blueprint, mid-century illustration, stained glass, arabesque and geometric ornament, painted realism, bold flat graphic. Avoid generic corporate flat art.
+- **Write it down** in the plan, in four short lines: the medium; the palette (5 to 7 hex colours with their jobs: background, ground, shadow, accent); shapes and line (soft or angular, outlined or not); texture and light (grain, paper, brush; where the light comes from). Put it into `STYLE`, then write 2–4 small style helpers (an outlined-shape function, a texture layer, a shadow convention) that every scene uses, so the scenes feel like one film.
+- **One hand drew everything:** every scene, prop, particle and caption follows that look; captions get a font that matches it (`STYLE.font`), always legible.
+- Beautiful and dignified: craft over gimmicks, nothing cheap or garish. Say the look in one line when you deliver.
+
+## Named style: American realism
+
+**Only when the user asks for it** ("American realism", "realism", "Hopper style", "the realism look"). Say in one line that you used it and which room colour (see below).
 
 **American realism is a treatment, never a set of elements.** It borrows the quiet look of Hopper and Wyeth: still-life, one raking window light, big flat planes of colour, long cast shadows. The subjects are only the script's own objects; add no diner, no counter props and no scenery beyond the room that holds them unless the script calls for it.
 
@@ -130,7 +137,7 @@ The image-brief style lock reads: "American realism still-life of <the script's 
 
 ## Named styles and style variations
 
-When the user says **"sun-print"** (or "sun print", "cyanotype"), **"grain style"** (or "grain look", "grainy style"), or asks for **style variations** ("show me style options", "different styles for this script"), read `styles.md` from the engine page first and follow it instead of American realism. Each is a treatment only: the subjects come from the script. For style variations the first reply is five style prompts, and nothing is built until the user's pick arrives.
+When the user says **"sun-print"** (or "sun print", "cyanotype"), **"grain style"** (or "grain look", "grainy style"), or asks for **style variations** ("show me style options", "different styles for this script"), read `styles.md` from the engine page first and follow it instead of your own art direction. Each is a treatment only: the subjects come from the script. For style variations the first reply is five style prompts, and nothing is built until the user's pick arrives.
 
 ## Plan first: think it through, doubt it, agree it with the user
 
@@ -180,7 +187,9 @@ Keep it readable: short paragraphs, under about 900 words. Then stop and wait. W
 - Keep script, timing and asset configuration in editable structured data, separate from drawing logic.
 
 ### 2. Set the style
-**No style named, no reference, no variations round:** American realism (see *Default style: American realism*). Name the script's main element, pick the room from its candidates, and say it in one line.
+**No style named, no reference, no variations round:** your own art direction (see *Art direction*), written into `STYLE` and the style helpers.
+
+**"American realism":** see *Named style: American realism*. Name the script's main element, pick the room from its candidates, and say it in one line.
 
 **"Sun-print" or "Grain style":** follow `styles.md` (treatment only; the subjects come from the script).
 
@@ -197,15 +206,15 @@ In image-assisted mode the style DNA also becomes the style lock in the image br
 
 **Cel-shaded:** flat base fills; one hard-edged shadow shape per object in a darker tone of the same hue, on the side away from the light; an optional thin rim highlight; thick dark outlines; no gradients. Draw the shadow inside `push()`/`pop()`: clip to the object's shape with `beginClip()`/`endClip()`, then draw a darker copy shifted away from the light. Keep one light direction for the whole reel.
 
-**Without a reference or a named style:** use American realism. Choose a different direction only when the user asks for one (bold flat graphic, paper cut-out, risograph, hand-drawn ink, blueprint, chalkboard, mid-century illustration), and avoid generic corporate flat art. If the user wants to compare looks first, run the style-variations flow in `styles.md` instead.
+**Without a reference or a named style:** choose the look yourself (*Art direction*), a different one from the last reel in this chat. If the user wants to compare looks first, run the style-variations flow in `styles.md` instead.
 
 ### 3. Plan with the user, then wait
 Follow *Plan first*. For each line decide the **idea** (the visual metaphor for what the line *means*), the **shot** (macro, wide, top-down, split screen, diagram, kinetic type) and the **motion** inside the scene. Then decide the scene changes (an element and its action, from *Scene changes*) and the sound (*Sound*), and attack each with the doubt list. Choose metaphors and choreography from the script; don't force every reel into one formula, and read the plan as a sequence to fix repetition (see *Variety within one style*). Share the plan, ask your few questions, and stop. Build in the next reply, after the user agrees.
 
 ### 4. Start the page
-If a bundled template is available, copy it and edit only the reel script block (REEL, STYLE, CAPTIONS, SCRIPT, SCENES and your props, plus the assets block in image-assisted mode). Splice in with code: `realism-kit.js` in place of the template's `STYLE` and `CAPTIONS` sections (American realism; other styles use their own helpers, see `styles.md`), `scene-changes.js` below `SCENES`, and `sound-library.js` (see *Sound*). Make the engine changes in `engine.md` (the `STYLE.post` hook, the end-screen hold). Replace all demo scenes. Leave the rest of the engine alone unless you must change it; if you do, keep recording, captions and timing working. Otherwise, write one self-contained `index.html` following `engine.md` and *Delivery*.
+If a bundled template is available, copy it and edit only the reel script block (REEL, STYLE, CAPTIONS, SCRIPT, SCENES and your props, plus the assets block in image-assisted mode). Splice in with code: `realism-kit.js` in place of the template's `STYLE` and `CAPTIONS` sections (American realism only; every other look sets the template's `STYLE` and uses its own helpers, see `styles.md`), `scene-changes.js` below `SCENES`, and `sound-library.js` (see *Sound*). Make the engine changes in `engine.md` (the `STYLE.post` hook, the end-screen hold). Replace all demo scenes. Leave the rest of the engine alone unless you must change it; if you do, keep recording, captions and timing working. Otherwise, write one self-contained `index.html` following `engine.md` and *Delivery*.
 
-Update the Google Fonts `<link>` if you change `STYLE.font` (the template loads Libre Baskerville for American realism), and list any other canvas fonts in `REEL.extraFonts` so the engine waits for them before drawing captions.
+Update the Google Fonts `<link>` if you change `STYLE.font` (the template loads Libre Baskerville), and list any other canvas fonts in `REEL.extraFonts` so the engine waits for them before drawing captions.
 
 Every SCRIPT line gets `scene: 'reel'`, and the scene-change compositor goes below `SCENES` (see *Scene changes*). Set `REEL.autoTransitionSfx: false`.
 
@@ -230,7 +239,8 @@ It lists scenes, caption chunks and cues, flags undefined scenes, unknown SFX an
 - ten frames across every scene change, plus the join check at both ends; for an end screen, hold 0, the default and a long hold;
 - no camera move revealing a background edge;
 - no elements that came from a style sample rather than the script;
-- American realism: one room and one window light throughout (plus a lamp at night), the room colour matches the main element (not the mood), objects have cast shadows and no outlines, nothing pops in with a bounce, captions legible over the light patches.
+- the look holds from first frame to last (palette, line, texture, captions), and is not the last reel's look;
+- American realism (when asked for): one room and one window light throughout (plus a lamp at night), the room colour matches the main element (not the mood), objects have cast shadows and no outlines, nothing pops in with a bounce, captions legible over the light patches.
 
 Do not claim that recording, MP4 export or audio export works unless you actually observed it. If the chat preview restricts playback or recording, say so and direct the user to the downloaded file. If no browser is available, say that the frames were not seen and that only the code was checked.
 
@@ -479,11 +489,11 @@ These carry over from the user's visual-hook brief and apply to every frame, eve
 - No brand logos, copyrighted characters or real people.
 - If the user's own supplied artwork conflicts with these rules, say so plainly and ask how to proceed rather than silently using or altering it.
 
-## Example invocation: default style (American realism)
+## Example invocation: no style named
 
 > /reel-creator 13 seconds, 4 scenes, voiceover to follow. 0:00–0:03 Your second cup isn't helping. 0:03–0:06.5 Caffeine stays in your body for 6 hours. …
 
-Expected behaviour: no style was named, so American realism is used in drawn mode. One line says which: "Room: Sage (element: coffee; candidates: brick, sage, ochre)". Every scene is a quiet still-life of the script's own objects (cups, beans, a wall clock, a lamp, a glass) on a counter in that room, lit by one window whose light moves with the hours, with cast shadows, a painted-canvas texture and a full-screen button on the page. A different script (a phone, a plant, a coin) gets a different room, chosen from its own element. The first reply is the plan (scene changes and sounds, each with its doubts and fixes, and a few questions); the reel is built after the user agrees.
+Expected behaviour: no style was named, so you choose the look in drawn mode and write it in the plan in four lines: for example ink and wash on warm paper, a coffee-brown, cream and night-blue palette, loose brush lines, light from a lamp. The next reel in the chat gets a different look (say a risograph print, or American realism only if the user asks for it). The first reply is the plan (scene changes and sounds, each with its doubts and fixes, and a few questions); the reel is built after the user agrees.
 
 ## Example invocation: the plan comes first
 

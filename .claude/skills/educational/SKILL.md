@@ -12,7 +12,7 @@ description: "Aspire series template (engine: p5, extends reel-creator). Kinetic
 - **The words are the picture.** Every word of the script appears on screen, in order, exactly as written, as big kinetic type. It replaces the caption block (`CAPTIONS.show = false`), so the words are never shown twice.
 - **One idea per reel, 15 to 45 s.** A claim or question as the hook, two to four points, a recap that brings back the key words, a CTA end screen with the adjustable hold.
 - **A drawn anchor in every scene.** Beside the words, one simple graphic drawn in code that *shows* the idea: a counter, a bar, a calendar row, a timeline, an arrow, a split screen, a checklist, a before/after. It is on screen at the scene's first frame, so the move into the scene lands on it (words alone arrive with the voice, so a scene of words only is an empty frame while the move happens).
-- **Not American realism.** The series look replaces the parent's default style (below). A named style ("grain style", "sun-print") or "with images" from the user still overrides it.
+- **The series look, not a fresh one.** The series look (below) replaces the parent's per-reel art direction. A named style ("grain style", "sun-print") or "with images" from the user still overrides it.
 
 ## The series look
 

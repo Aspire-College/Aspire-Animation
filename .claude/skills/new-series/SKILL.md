@@ -14,7 +14,7 @@ From the user's message, the chat, or a reel already made (its `script.md`, `ree
 - **The shape:** length, structure, recurring segments, CTA, captions or none.
 - **The look and sound:** style, palette, fonts, sound world; or "same as <existing series>".
 - **What stays and what changes** from episode to episode.
-- **The engine:** 2D drawn (p5), 3D clay (three), 2.5D painted layers (hybrid), or prompts only (no engine).
+- **The engine:** 2D drawn (p5), 3D (three), 2.5D painted layers (hybrid), or prompts only (no engine).
 
 Ask only what you can't infer, in one message, at most four numbered questions, each with your default ("I'll assume 30 s with a CTA unless you say otherwise"). If the user said to go ahead, use your defaults and say which.
 

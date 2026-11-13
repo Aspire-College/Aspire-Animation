@@ -1,14 +1,14 @@
 ---
 name: "reel-creator-3d"
-description: "Aspire repo engine skill (engine: three). Turn a timestamped Reel script into a 3D 9:16 reel in Three.js: clay dioramas in one sky, arranged differently every reel, cinematic camera moves, story lighting, no cuts, planned first and built scene by scene. Use for 3D reels; images only when the user says \"with images\". Say 'give prompt' for a ready-to-paste build prompt, or 'prompt in parts' for the plan-first, part-by-part version; no reel is built in either case."
+description: "Aspire repo engine skill (engine: three). Turn a timestamped Reel script into a 3D 9:16 reel in Three.js: a fresh art direction every reel (no house style), places in one world arranged differently every reel, cinematic camera moves, story lighting, no cuts, planned first and built scene by scene. Use for 3D reels; images only when the user says \"with images\". Say 'give prompt' for a ready-to-paste build prompt, or 'prompt in parts' for the plan-first, part-by-part version; no reel is built in either case."
 ---
 
 # 3D Reel Creator
 
-You turn a timestamped script into a vertical 3D reel: one `index.html` that renders every frame with Three.js, shows captions line by line, plays a diverse sound score matched to the picture and records itself at 1080×1920. 3D is for **cinematic camera moves, light and storytelling**: every place is a small clay diorama floating in one sky, the camera travels from one to the next carried by an element of the story, and the light follows the time of day.
+You turn a timestamped script into a vertical 3D reel: one `index.html` that renders every frame with Three.js, shows captions line by line, plays a diverse sound score matched to the picture and records itself at 1080×1920. 3D is for **cinematic camera moves, light and storytelling**: every place is a small world (a diorama, an island, a model inside another) in one world, the camera travels from one to the next carried by an element of the story, and the light follows the time of day.
 
-- **Drawn (default):** forms are clay boxes; every picture (textures, a poster, a clock dial, a phone screen, the window view, people and plants as flat cut-outs) is a Canvas 2D drawing in code, and simple animations are 2D drawings redrawn every frame (clock hands, a scrolling feed).
-- **With images:** only when the user says **"with images"** (or attaches images and says to use them). Generated images then carry the stationary things that matter, on flat faces, tiled by real size or bent on sheets, never stretched. Never switch on your own.
+- **Drawn (default):** forms are built in code (boxes, cylinders, balls) and finished in the reel's look; every picture (textures, a poster, a clock dial, a phone screen, the window view, people and plants as flat cut-outs) is a Canvas 2D drawing in code, and simple animations are 2D drawings redrawn every frame (clock hands, a scrolling feed).
+- **With images:** only when the user says **"with images"** (or attaches images and says to use them). Generated images in the reel's look then carry the stationary things that matter, on flat faces, tiled by real size or bent on sheets, never stretched. Never switch on your own.
 
 Plan first, then build scene by scene. No cuts: an element of each scene takes us into the next. The user checks the picture with screenshots. Explicit user instructions override every default here. Standalone hooks go to `reel-visual-hook`, 2D reels to `reel-creator`; don't add an opening card or hook to a supplied script.
 
@@ -17,7 +17,7 @@ Plan first, then build scene by scene. No cuts: an element of each scene takes u
 These two requests ask for a prompt to paste into another chat, not for a reel. When the user says **"give prompt"** or **"prompt in parts"** (or plainly asks for the prompt, for example "give me the prompt"), do only the steps below and skip everything else in this skill: no plan, no engine page, no questions about style or mode, no build.
 
 1. **Pick the template.** "give prompt" → *Single prompt*. "prompt in parts" → *Prompt in parts* (a brief plan first, then one working part per message).
-2. **Fill in the task.** The user's request for the reel (their script and any style, length, CTA or other instructions, whether in this message or earlier in the chat) goes after `Task:` exactly as they wrote it. Don't summarise, improve or expand it. If their words don't already say what kind of reel it is, put this one line first, then their words on the next line: "Make a 3D 9:16 Reel (1080×1920) as a single index.html in Three.js: each place a small clay diorama floating in one sky, cinematic camera moves, story lighting, no cuts (an element of each scene takes us into the next), captions line by line, a sound score matched to the picture, and Record & Download, from this timestamped script:"
+2. **Fill in the task.** The user's request for the reel (their script and any style, length, CTA or other instructions, whether in this message or earlier in the chat) goes after `Task:` exactly as they wrote it. Don't summarise, improve or expand it. If their words don't already say what kind of reel it is, put this one line first, then their words on the next line: "Make a 3D 9:16 Reel (1080×1920) as a single index.html in Three.js: each place a small world in one world, a fresh art direction, cinematic camera moves, story lighting, no cuts (an element of each scene takes us into the next), captions line by line, a sound score matched to the picture, and Record & Download, from this timestamped script:"
 3. **Reply.** Give the finished prompt inside one plain code block. One short line before it is the most allowed; nothing after it.
 
 If there is no script yet, ask for it in one sentence and stop. Copy the templates word for word: don't reword, shorten, add to or reorder any line.
@@ -60,46 +60,38 @@ Task:
 - **The script with timestamps** (required), in any notation (`0:03`, `[3s]`, `0:03–0:07`). If timestamps are missing, ask once; if told to go ahead, estimate 2.5 words per second plus 0.3 s between lines and say so. Use the user's words exactly; `*word*` marks the one or two words that carry the punch.
 - Optional, never block on them: a CTA, the audience (it decides who "you" is on screen; ask in the plan if unknown), a voiceover, the user's own sound recordings. If an "attached" image isn't there, take the look from their words and carry on.
 
-## The look: Clay
+## Art direction: a new look every reel
 
-**Clay is a treatment, never a set of elements:** the subjects come only from the script.
-- **Clay forms:** rounded boxes (5 cm bevel), cylinders and low-poly balls in matte, slightly desaturated colours with a little tone variation. A bed is three boxes, a cup a cylinder; detail only where the camera goes close.
-- **Dioramas in one sky:** each place is a clay box: a cutaway room (floor, back wall with a window, left wall, darker wainscot) or an outdoor island (`plinth`), 11 to 14 m apart, so the camera can travel between them and the end can pull back to show them all. How they sit in the sky changes every reel (*Arrange every reel differently*).
-- **One room colour per reel, from the script's MAIN ELEMENT, never its mood.** Name the element (a noun: "Your second cup isn't helping" → coffee). The candidates are the rooms whose list holds it (else the whole table). Take index = (letters in the reel title + number of script lines) mod (number of candidates), or the next candidate if this chat already used it. `setRoom('<room>')`, and say it in one line: "Room: Sage (element: coffee; candidates: brick, sage, ochre)".
+There is no house style: you have complete creative freedom. Choose the look from the script, its audience and its feeling, and never repeat the last reel's look in this chat. The user's words about a look always win. Looks to think in, never a menu: soft matte clay, low-poly flat-shaded, a wooden toy set, folded paper craft, glazed ceramic, felt and fabric, a realistic miniature, polished glass and light, brushed metal and machines, toon shading, stone and plaster, a lit night city, a pop-up book. Mix them when the story wants it.
 
-| Room | Wall | Main elements |
-|---|---|---|
-| `brick` | #6E3F34 | fire, cooking, spice, coffee, tools, work, engines, city, building, energy |
-| `sage` | #41605A | coffee, tea, water, health, medicine, breath, calm, sleep, cleaning |
-| `ochre` | #7B6A3A | coffee, bread, grain, honey, money, gold, wealth, the sun, sand |
-| `dusk` | #3C5370 | time, clocks, phones, screens, data, internet, travel, rain, air, study, ideas |
-| `olive` | #505C36 | plants, gardens, farming, nature, growth, olives, vegetables, food, the environment |
-| `slate` | #4A4A5E | books, writing, the mind, memory, learning, AI, technology, silence, metal, stone |
-| `plum` | #5A3A4A | the heart, love, gifts, giving, fruit, dates, pomegranates, roses, family, emotions |
-
-- **Palette** (`P`): wood #7B4F2D to #A47445, cream #EFE8D4, one mustard accent #E9B44C, terracotta, leaf green. Never neon, pure black or pure white.
-- **One light:** the sun or the moon through the window (soft shadows, pane-shaped patches), a fill from the camera side, a sky that follows the time of day; at night a practical light (a screen, a lamp).
-- **People are flat paper cut-outs**, front view; the camera stays within about 35° of their front.
-- **Captions:** Libre Baskerville 700, warm cream with a dark halo, emphasis in mustard. The picture runs edge to edge with a light vignette.
+**A look is a treatment, never a set of elements:** the subjects come only from the script.
+- **Write it down** in the plan, in four short lines: the medium and materials (`LOOK`: `bevel` 0.005 crisp to 0.08 soft, `rough` 0 glossy to 1 matte, `metal`, `sat`, `vary`; `mat(col, { rough, metal })` for one form); the palette (5 to 7 hex colours with their jobs: walls, ground, shadow, accent; set them on `P` at the top of `reel.js`); shapes (rounded or sharp, chunky or fine, how much detail); light and finish (time of day, colour of the light, textures).
+- **One hand made everything:** every form, drawing, cut-out, particle and caption follows that look. Don't drift into a default.
+- **Captions follow the look:** `CAPTIONS.font` (any Google Font with the weight in `CAPTIONS.weight`), colours, outline or soft `shadow`, always legible over any part of the picture.
+- **Places:** the world is built of places the camera can travel between: cutaway rooms (`room`), outdoor islands (`plinth`, `terrain`), small worlds nested inside others, or one place that changes, about 11 to 14 m apart so the camera can travel and the end can pull back. How they sit changes every reel (*Arrange every reel differently*).
+- **Wall colour (optional):** when the look has coloured rooms, `setRoom('<room>')` gives one from the script's MAIN ELEMENT, never its mood: brick (fire, cooking, work, city), sage (water, health, calm, sleep), ochre (bread, money, the sun, sand), dusk (time, screens, travel, study), olive (plants, nature, food), slate (books, the mind, technology, stone), plum (the heart, love, family, fruit). Or set `P.wall`, `P.wall2`, `P.wain` yourself.
+- **Light:** one main source with a reason in the picture (the sun or moon through a window, a lamp, a screen, the sky outdoors), and a sky that follows the time of day.
+- **People** are flat cut-outs painted in the look, front view; the camera stays within about 35° of their front.
 - **Motion:** the camera eases with a breath of hand-held life; objects slide and settle with a small hop (`settle`), never bounce or scale-pop; steam rises, dust drifts, the light arcs with the hours.
+- Beautiful and dignified: craft over gimmicks, nothing cheap or garish.
 
 ## Pictures: drawn in code, or images
 
 | Kind | For | How |
 |---|---|---|
-| Clay forms | every form, and everything that moves, turns, falls or lights up | `bx`, `cy`, `ball`, `grp`; motion in `animate(T)` |
+| Forms | every form, and everything that moves, turns, falls or lights up | `bx`, `cy`, `ball`, `grp`; motion in `animate(T)` |
 | Drawings (both modes) | surfaces (floors, walls, wallpaper, rugs, ground, table tops, fabric), pictures made of simple shapes (a poster, a sign, a label, a book cover), screens, clock dials, the window view and sky, people and plants in drawn mode, **any picture that animates simply** | `Paint.*`, or `drawing(w, h, (c, w, h, t) => …, live)` in `PICS` |
 | Images ("with images" only) | the stationary things that matter (see *With images*) | the user generates them from your brief; `build.py --images` |
 
-**Canvas 2D is your p5.js.** Whatever a p5 sketch could draw, a drawing can: wood grain, plaster, marble, brick, tiles, wallpaper, Islamic geometric patterns, rugs, fabric, paper, clouds, small animations. Use it wherever it gives the best picture, judged shot by shot from what the camera sees: a textured floor and wall usually beat flat colour, and a plain clay form is sometimes best left plain. `Paint.*` are starting points, not a menu. Helpers: `noise(u, v, { period, oct, seed })` (smooth 0–1, tileable: grain, plaster, marble, clouds), `pixels(c, w, h, (u, v) => [r, g, b, a])` (paints per pixel; draw shapes after it), `wrap(c, w, h, c => …)` (a shape crossing an edge continues on the opposite one; make its `rng` inside), `rgb(hex)`, `mixv`.
+**Canvas 2D is your p5.js.** Whatever a p5 sketch could draw, a drawing can: wood grain, plaster, marble, brick, tiles, wallpaper, Islamic geometric patterns, rugs, fabric, paper, clouds, small animations. Use it wherever it gives the best picture, judged shot by shot from what the camera sees: a textured floor and wall usually beat flat colour, and a plain form is sometimes best left plain. `Paint.*` are starting points, not a menu. Helpers: `noise(u, v, { period, oct, seed })` (smooth 0–1, tileable: grain, plaster, marble, clouds), `pixels(c, w, h, (u, v) => [r, g, b, a])` (paints per pixel; draw shapes after it), `wrap(c, w, h, c => …)` (a shape crossing an edge continues on the opposite one; make its `rng` inside), `rgb(hex)`, `mixv`.
 
-**Drawing rules:** Canvas 2D (`c.fillRect`, `c.arc`, `c.roundRect`, paths, gradients; `rr` and `dot` are shortcuts). Paint the whole canvas every call. A live drawing runs every frame with the script time `t`: a pure function of `t`, three at most, 512 px at most, shapes only (`pixels` is too slow for every frame). Tiles are seamless (`wrap`, `noise`). A matte, hand-made clay feel (soft shapes, gentle grain and tone variation, no gloss), colours from `P` and the room, `rng(seed)` never `Math.random`, no text or logos (captions are separate). Cut-outs leave their background transparent (`paper` adds the cream die-cut rim).
+**Drawing rules:** Canvas 2D (`c.fillRect`, `c.arc`, `c.roundRect`, paths, gradients; `rr` and `dot` are shortcuts). Paint the whole canvas every call. A live drawing runs every frame with the script time `t`: a pure function of `t`, three at most, 512 px at most, shapes only (`pixels` is too slow for every frame). Tiles are seamless (`wrap`, `noise`). Painted in the reel's look, colours from `P`, `rng(seed)` never `Math.random`, no text or logos (captions are separate). Cut-outs leave their background transparent (`paper` adds the cream die-cut rim).
 
 **Never stretched:** tiles repeat by their real size (`tile` metres per picture; neighbouring pieces continue with `ox`, `oy`); a face takes its height from its picture (`face`; `picBox` with `h = null`); a cut-out takes its width from its picture; a label wraps a cylinder with arc length = height × the picture's width ÷ height (`label`); the window view sits a little behind the window, tinted by the light. Keep the camera within about 35° of a flat picture's front; `cutout(…, { bill: true })` turns toward a camera that circles it.
 
 ## Arrange every reel differently
 
-The look stays; the arrangement never repeats. Choose these from the script, and never as the last reel in this chat had them (say what that was, if any, in the plan).
+The look and the arrangement both change from reel to reel. Choose these from the script, and never as the last reel in this chat had them (say what that was, if any, in the plan).
 - **Layout of the dioramas in the sky:**
   - a **tower**, stacked up or down (rise, fall);
   - a **row** or a winding path (follow, along);
@@ -123,7 +115,7 @@ Before any code and any image brief, plan the world, every scene change, the cam
 2. Scenes (usually 6 to 10 for 25 s, 3 or 4 for 10 s) and one thread: one or two objects that come back and a light arc (night blue to dawn gold, storm to calm).
 3. The world: the layout (from *Arrange every reel differently*, not the last reel's), one diorama per place with its own shape and size, and where each floats (above, below, beside, behind another's window, inside another) so that each move travels a short, clear path.
 4. Each scene change: an element of the scene we leave and a move from *Scene changes* that means what the next line says. Then the shot inside each scene and the path of each move. Write the shot list.
-5. The pictures: what is a clay form, what is a drawing, and (with images) every image that matters.
+5. The pictures: what is a form, what is a drawing, and (with images) every image that matters.
 6. Attack each idea with the doubt list; write the doubt and the fix, or drop the idea. Then attack the whole plan: a showreel of tricks? A repeated move, direction or shot? The same layout, rooms or opening as the last reel? The simpler fallback for the two hardest moves? Does every sound come from the picture?
 
 **Doubt list (every scene change):** *Switch point:* where does the eye pass to the next scene without a jump (the element in frame while the sky passes, a view through a window, the same place in a new state)? No frame named = a hidden cut. *Established:* the element is on screen 0.4 s, readable, before it moves. *Meaning:* the move says what the next line says. *Continuity:* nobody in two places at once; one travelling object is one mesh. *Camera path:* never through a wall, floor, furniture or person (enter and leave through the open front, side or top); flat pictures and cut-outs never seen more than 35° off their front. *Timing:* starts in the last half-second of the line, lands as the next words begin, calm under the words. *Repetition:* move kind, direction, scale. *Captions:* nothing moving through the caption band or a Qur'an verse panel. *Respect:* the content rules. *Build:* doable with the kit? *Sound:* what the element sounds like, where the bed changes.
@@ -132,7 +124,7 @@ Before any code and any image brief, plan the world, every scene change, the cam
 
 **The plan reply** (no code), after one sentence on what you'll do:
 1. What went wrong before (only after a correction).
-2. The idea: thread, returning objects, light arc, room colour, layout (two or three sentences).
+2. The idea: thread, returning objects, light arc, layout (two or three sentences), then the look: the four lines of the art direction.
 3. The world: one line per diorama (place, shape and size, contents, where it floats).
 4. The moves: per change its time and the line it leads into, then **Move**, **Doubt → fix**, **Sound**.
 5. Camera and light: the shot list (`MAP` rows, with lens) and the light arc.
@@ -202,9 +194,7 @@ Each round's reply: one line on what changed, the file, then "Press **📸 Next 
 ```
 IMAGE BRIEF — <reel title> — <scene or stage> (<n> images)
 ATTACH BEFORE PASTING: <label → the earlier image to keep as reference, or nothing>
-SHARED STYLE: soft matte clay (plasticine) look, hand-sculpted and hand-painted, gently rounded edges, faint pressed
-texture. Muted palette: <room wall hex>, wood #7B4F2D to #A47445, cream #EFE8D4, mustard #E9B44C, terracotta #B85C4A,
-leaf green #6F9A4E. Straight-on front view, no perspective. Soft even front light: no cast shadows, no directional
+SHARED STYLE: <the art direction in words: medium and materials, palette hex, shapes, texture>. Straight-on front view, no perspective. Soft even front light: no cast shadows, no directional
 shading, no highlights, no vignette (the 3D scene adds light and shadow).
 SHARED RULES: no text, letters, numbers, logos or watermarks. Cut-outs: a real transparent background, not a
 checkerboard or white (if impossible, flat pure magenta #FF00FF). Tiles: seamless, left edge continues into right,
@@ -281,7 +271,8 @@ function verseAt(T) {   // first line of animate(T)
 
 **reel.js** (the top level only declares; `build` makes everything once, `animate` sets what moves from `T` alone):
 ```js
-setRoom('dusk');                                             // Room: Dusk (element: phone; candidates: dusk)
+setRoom('dusk');                                             // optional wall colour (element: phone)
+Object.assign(LOOK, { bevel: 0.05, rough: 0.9 }); Object.assign(CAPTIONS, { font: 'Fraunces', weight: 700 });   // the reel's look
 const REEL = { title: 'Before you wake', fps: 30, ctaHold: 0 };
 const SCRIPT = [ { start: 0, end: 3.3, text: 'You pick it up *before* you wake.', sfx: [{ at: 0, type: 'room', dur: 3.6 }] }, … ];
 const WORLD = { A: [0, 0, 0], B: [0, 11, 0], C: [13, 0, 0] };   // dioramas in one sky (a nested one: { in: 'A', at: [x, y, z], s: 0.05 })
@@ -306,11 +297,11 @@ const CHECKS = [[0.05, 'A opens', AT('A', [-1.8, 1.7, -1.3])], [3.0, 'rise A→B
 - `bx`, `cy`, `ball`, `cutout`, `label` take the base; `face`, `glow` the centre. Move, turn or scale meshes, never shared geometry. Everything moving is set in `animate` from `T` (no state, `rng(seed)`, analytic particles).
 - Don't redeclare engine names (anything in the template). Yours: `REEL SCRIPT WORLD MAP PICS LIGHTS CAM CHECKS END R build animate camMod` (plus `VERSES QFONT QTOP QH CAP_Y inkVerse paintVerse verseLayers verseAt` when a verse shows).
 
-**Engine:** `setRoom`; `diorama(key, grey)`, `room(g, { w, d, hh, win: [x, w, h, sill] | false, door: [x, w, h], right, left, ceil, front, shell, bars, floor, wall, tile, view, wainscot })` → `{ win, door }`, `plinth(g, { w, d, h, top, side, tex, tile })`; `bx(g, x, y, z, w, h, d, col, { mats, ry, cast, em, ei })`, `cy(g, x, y, z, r, h, col, { top, seg })`, `ball(g, x, y, z, r, col)`, `grp(g, x, y, z, ry)`, `mat(col, { map, em, glow, opacity })`; pictures `face(g, key, w, x, y, z, { ry, glow })`, `picBox(g, x, y, z, w, h, d, key, { face: 'z'|'x'|'-x'|'y', tile, ox, oy, tint, side })`, `cutout(g, key, h, x, y, z, { ry, flip, bill })`, `label(g, key, r, h, x, y, z)`, `glow(g, x, y, z, size, col)`, `practical(g, x, y, z, col, power, reach)`, `pic(key)`, `ratio(key)`; `drawing(w, h, fn, live)`, `paper(w, h, fn, live)`, `noise(u, v, { period, oct, seed })`, `pixels(c, w, h, fn)`, `wrap(c, w, h, fn)`, `rgb(hex)`; `Paint.planks(c0, c1, n)`, `Paint.view({ sky, hill, tree })`, `Paint.screen({ bg, speed })`, `Paint.clock(hours or t => hours)`, `Paint.plant({ pot, leaf })`, `Paint.person({ who: man|woman|boy|girl, pose: stand|sit, hands: down|phone|book, top, bottom, skin, hair, scarf })` (women and girls always in hijab and a long dress; children: a smaller height); `PT.stream(origin, T, { t0, t1, rate, life, v, g, spread, wob, size, streak, col, s, seed })`, `PT.motes(origin, T, { n, box, y, size, s })`, `PT.burst(origin, T, t0)`; `AT(key, point)`, `lv(key)` → `{ o, s }`, `screenOf(point, T)`, `endPhase(T)`, `sm`, `tw`, `bump`, `settle`, `mix`, `mixv`, `add3`, `clamp01`, `rng`, `Ease`, `hexMix`, `lighten`, `darken`, `rgba`; `P`, `LOOK`, `CAPTIONS`, `BREATH`, `world`. Optional kits (in a diorama's metres): `terrain(g, { kind: plain|field|hills|valley|desert|mountains|shore, size, width, flat, pads, cols, alive, edge, sink, seed })` → `{ h(x, z), grow(k, at) }`, `water(g, { size, y, col })`, `clouds(g, { n, area, y, z, size })`, `town(g, { area, lot, open, roof })`, `section(g, { kind: soil|cave|hive|drop })`, `planet(g, x, y, z, R, { region })`, `orb(g, x, y, z, r, col, { halo })`, `stars(g, { n, r })`.
+**Engine:** `setRoom`; `diorama(key, grey)`, `room(g, { w, d, hh, win: [x, w, h, sill] | false, door: [x, w, h], right, left, ceil, front, shell, bars, floor, wall, tile, view, wainscot })` → `{ win, door }`, `plinth(g, { w, d, h, top, side, tex, tile })`; `bx(g, x, y, z, w, h, d, col, { mats, ry, cast, em, ei })`, `cy(g, x, y, z, r, h, col, { top, seg })`, `ball(g, x, y, z, r, col)`, `grp(g, x, y, z, ry)`, `mat(col, { map, em, glow, opacity, rough, metal })`; pictures `face(g, key, w, x, y, z, { ry, glow })`, `picBox(g, x, y, z, w, h, d, key, { face: 'z'|'x'|'-x'|'y', tile, ox, oy, tint, side })`, `cutout(g, key, h, x, y, z, { ry, flip, bill })`, `label(g, key, r, h, x, y, z)`, `glow(g, x, y, z, size, col)`, `practical(g, x, y, z, col, power, reach)`, `pic(key)`, `ratio(key)`; `drawing(w, h, fn, live)`, `paper(w, h, fn, live)`, `noise(u, v, { period, oct, seed })`, `pixels(c, w, h, fn)`, `wrap(c, w, h, fn)`, `rgb(hex)`; `Paint.planks(c0, c1, n)`, `Paint.view({ sky, hill, tree })`, `Paint.screen({ bg, speed })`, `Paint.clock(hours or t => hours)`, `Paint.plant({ pot, leaf })`, `Paint.person({ who: man|woman|boy|girl, pose: stand|sit, hands: down|phone|book, top, bottom, skin, hair, scarf })` (women and girls always in hijab and a long dress; children: a smaller height); `PT.stream(origin, T, { t0, t1, rate, life, v, g, spread, wob, size, streak, col, s, seed })`, `PT.motes(origin, T, { n, box, y, size, s })`, `PT.burst(origin, T, t0)`; `AT(key, point)`, `lv(key)` → `{ o, s }`, `screenOf(point, T)`, `endPhase(T)`, `sm`, `tw`, `bump`, `settle`, `mix`, `mixv`, `add3`, `clamp01`, `rng`, `Ease`, `hexMix`, `lighten`, `darken`, `rgba`; `P`, `LOOK` (`bevel`, `rough`, `metal`, `env`: how strongly metal reflects, `sat`, `vary`, `seg`), `CAPTIONS` (`font`, `weight`, `color`, `emphasis`, `outline`, `outlineColor`, `shadow`), `BREATH`, `world`. Optional kits (in a diorama's metres): `terrain(g, { kind: plain|field|hills|valley|desert|mountains|shore, size, width, flat, pads, cols, alive, edge, sink, seed })` → `{ h(x, z), grow(k, at) }`, `water(g, { size, y, col })`, `clouds(g, { n, area, y, z, size })`, `town(g, { area, lot, open, roof })`, `section(g, { kind: soil|cave|hive|drop })`, `planet(g, x, y, z, R, { region })`, `orb(g, x, y, z, r, col, { halo })`, `stars(g, { n, r })`.
 
 ## Delivery
 
-Send the user `out.mp4` (rendered with `node tools/render.js`) and `index.html` as files, as `CLAUDE.md` says (never commit the reel; `index.html` carries its source for `node tools/unpack-reel.js`). The user opens `index.html` in Chrome, Edge or Safari to preview, adjust the hold or record; the first open needs internet (Three.js from jsDelivr, the font from Google Fonts). The page has Play, Restart, Full screen (Esc or F; tap to play), a scrubber with frame stepping, **📸 Next check frame** and ◀ with the guides, End screen hold, sound volume, and Record & Download (real time, tab visible; MP4 where the browser can, otherwise WebM). Say what you checked (code, numbers, the frames you rendered and looked at, the measured sound peak) and that you haven't heard the reel. For another chat, give a short handoff: room, world layout, labels of the images to reattach, open issues.
+Send the user `out.mp4` (rendered with `node tools/render.js`) and `index.html` as files, as `CLAUDE.md` says (never commit the reel; `index.html` carries its source for `node tools/unpack-reel.js`). The user opens `index.html` in Chrome, Edge or Safari to preview, adjust the hold or record; the first open needs internet (Three.js from jsDelivr, the font from Google Fonts). The page has Play, Restart, Full screen (Esc or F; tap to play), a scrubber with frame stepping, **📸 Next check frame** and ◀ with the guides, End screen hold, sound volume, and Record & Download (real time, tab visible; MP4 where the browser can, otherwise WebM). Say what you checked (code, numbers, the frames you rendered and looked at, the measured sound peak) and that you haven't heard the reel. For another chat, give a short handoff: the look, world layout, labels of the images to reattach, open issues.
 
 ## Content rules
 

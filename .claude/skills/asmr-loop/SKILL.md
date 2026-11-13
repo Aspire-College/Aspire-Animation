@@ -5,7 +5,7 @@ description: "Aspire series template (engine: three, extends reel-creator-3d). A
 
 # ASMR loop: 10 seconds, seamless, satisfying
 
-**Extends `reel-creator-3d`.** Read `.claude/skills/reel-creator-3d/SKILL.md` first and follow it for the engine, the clay look, light, the build and the content rules. This file changes the reel's shape: there is no story to tell, so most of the parent's scene-change machinery is replaced by one loop. Where they differ, this file wins; the user's explicit instructions win over both.
+**Extends `reel-creator-3d`.** Read `.claude/skills/reel-creator-3d/SKILL.md` first and follow it for the engine, light, the build and the content rules. The parent has no house style; this series keeps one (below). This file changes the reel's shape: there is no story to tell, so most of the parent's scene-change machinery is replaced by one loop. Where they differ, this file wins; the user's explicit instructions win over both.
 
 ## What every reel in this series is
 
@@ -14,6 +14,10 @@ description: "Aspire series template (engine: three, extends reel-creator-3d). A
 - **Sound is the point.** Close, crisp, tactile sounds on every contact, no voice, no music.
 - **No script needed.** If the user gives a hook line, it shows as one static caption for all 10 s (it must be identical at frame 0 and 300); otherwise no caption (`SCRIPT` is one line with empty `text` that carries the sound cues). No end screen, no CTA hold (`ctaHold: 0`).
 - **2D variant.** If the user asks for a flat or 2D loop, build it with `reel-creator` (engine p5) under the same loop rules.
+
+## The series look: soft clay
+
+Unless the user names another look: soft matte clay (plasticine), `LOOK` as the engine sets it (rounded 5 cm bevel, matte, slightly desaturated with a little tone variation), muted colours (wood #7B4F2D to #A47445, cream #EFE8D4, one mustard accent #E9B44C, terracotta, leaf green; never neon, pure black or pure white), one soft window or studio light, captions in Libre Baskerville 700, warm cream with a dark halo. This replaces the parent's *Art direction* step: the plan names the look in one line instead of four.
 
 ## The loop mechanism (choose one, name it in the plan)
 

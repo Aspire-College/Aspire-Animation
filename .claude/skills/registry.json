@@ -5,23 +5,23 @@
       "kind": "engine",
       "engine": "p5",
       "parent": null,
-      "version": "1.0.0",
+      "version": "2.0.0",
       "origin": "claude.ai account skill reel-creator, imported 2026-10-30",
-      "summary": "2D p5.js reels: American realism by default, named styles, image-assisted mode"
+      "summary": "2D p5.js reels: a fresh art direction every reel (no house style), named styles on request, image-assisted mode"
     },
     "reel-creator-3d": {
       "kind": "engine",
       "engine": "three",
       "parent": null,
-      "version": "1.0.0",
+      "version": "2.0.0",
       "origin": "claude.ai account skill reel-creator-3d, imported 2026-10-30",
-      "summary": "3D Three.js reels: clay dioramas in one sky, cinematic camera, story lighting"
+      "summary": "3D Three.js reels: a fresh art direction every reel (no house style), cinematic camera, story lighting"
     },
     "reel-creator-2-5d": {
       "kind": "engine",
       "engine": "hybrid",
       "parent": null,
-      "version": "1.0.0",
+      "version": "1.0.1",
       "origin": "claude.ai account skill reel-creator-2-5d, imported 2026-10-30",
       "summary": "2.5D reels: p5.js-painted cards standing in a Three.js space, parallax and depth"
     },
@@ -29,7 +29,7 @@
       "kind": "series",
       "engine": "p5",
       "parent": "reel-creator",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "origin": "created 2026-10-30",
       "summary": "Kinetic typography explainers: the words are the picture"
     },
@@ -45,7 +45,7 @@
       "kind": "series",
       "engine": "three",
       "parent": "reel-creator-3d",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "origin": "created 2026-10-30",
       "summary": "10-second seamless satisfying loops, sound-led"
     },
@@ -61,7 +61,7 @@
       "kind": "tool",
       "engine": null,
       "parent": null,
-      "version": "1.0.0",
+      "version": "1.0.1",
       "origin": "created 2026-10-30",
       "summary": "Saves a new reel concept as a series template skill"
     },
