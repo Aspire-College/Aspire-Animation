@@ -2,6 +2,10 @@
 
 Newest first. One line per change: the engine, what changed, and why.
 
+## 2026-11-13 — check harness reads the right script
+
+- **three, hybrid:** `build.py --check` cut the page's module at the last `</script>`, which since the reel source was embedded is the `reel-source` block, so every check reported a false SYNTAX ERROR and skipped the frame-by-frame harness. It now cuts at the module's own `</script>`.
+
 ## 2026-10-31 — reels leave the repo
 
 - **all:** `build.py` embeds the reel's `reel.js`, `script.md` and `reel.json` in `index.html` (`<script id="reel-source">`), so the delivered page is the reel's project file; `tools/unpack-reel.js` restores the folder, images included. Rebuilding an unpacked reel gives the identical page.
